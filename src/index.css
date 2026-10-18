@@ -1,1 +1,116 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700;800&family=Geist:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+  --color-biensi-red: #c8102e;
+  --color-biensi-red-hover: #a50d24;
+  --color-biensi-red-light: #fff1f2;
+  --color-biensi-red-border: #fecdd3;
+  --color-biensi-dark: #0f172a;
+  --color-biensi-navy: #141724;
+  --color-biensi-slate: #1e293b;
+  --color-biensi-surface: #f8fafc;
+  --color-biensi-border: #e2e8f0;
+  --color-biensi-muted: #64748b;
+}
+
+:root {
+  --biensi-red: #c8102e;
+  --biensi-red-hover: #a50d24;
+  --biensi-red-light: #fff1f2;
+  --biensi-red-border: #fecdd3;
+  --biensi-dark: #0f172a;
+  --biensi-navy: #141724;
+  --biensi-slate: #1e293b;
+  --biensi-surface: #f8fafc;
+  --biensi-border: #e2e8f0;
+  --biensi-muted: #64748b;
+  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+  font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+html {
+  font-size: 15px;
+}
+
+body {
+  background-color: #f8fafc;
+  color: #0f172a;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: 'Geist', sans-serif;
+}
+
+.font-mono,
+.font-number,
+.stat-number,
+.metric-value,
+.tabular-nums,
+[data-tabular="true"] {
+  font-family: 'Geist Mono', monospace !important;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.01em;
+}
+
+h1, h2, .font-heading, .title-tight, .text-2xl, .text-3xl, .text-4xl {
+  font-family: 'Geist', sans-serif;
+  letter-spacing: -0.025em;
+}
+
+th,
+.text-\[10px\],
+.text-\[11px\],
+.text-caption,
+.tracking-small-caps,
+.badge-caps,
+.uppercase-tracking {
+  letter-spacing: 0.05em;
+}
+
+p, label, td, .text-xs, .text-sm, span:not(.font-mono) {
+  font-family: 'Geist', sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  display: none;
+}
+
+html, body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #262b40 transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+  display: block;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #262b40;
+  border-radius: 9999px;
+}
