@@ -1,6 +1,5 @@
 import React from 'react';
 import Chart from 'react-apexcharts';
-import { visualChartDatasets } from '../../data/phase1Data';
 import {
   Users,
   DollarSign,
@@ -16,9 +15,21 @@ import {
 interface Phase1VisualChartsProps {
   selectedYear: '2026' | '2025' | '2024';
   selectedScope: 'corporate' | 'hq' | 'store';
+  dashboardData?: any;
 }
 
-export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
+export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
+  dashboardData,
+}) => {
+  const apiDemo = dashboardData?.summary?.demographics;
+  const apiProd = dashboardData?.summary?.productivity;
+  const apiSp = dashboardData?.industrialAndSp;
+
+  const dynamicStoreHeadcount = apiDemo?.storeHeadcount || 0;
+  const dynamicHqHeadcount = apiDemo?.hqHeadcount || 0;
+  const totalHeadcount = apiDemo?.totalHeadcount || 0;
+
+  const headcountCategories = ['2024', '2025', '2026 (Optimasi)'];
   const headcountChartOptions: ApexCharts.ApexOptions = {
     chart: {
       type: 'bar',
@@ -45,7 +56,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
       }
     },
     xaxis: {
-      categories: visualChartDatasets.headcountHistory.categories,
+      categories: headcountCategories,
       axisBorder: { show: false },
       axisTicks: { show: false },
       labels: {
@@ -79,9 +90,22 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
   };
 
   const headcountSeries = [
-    { name: 'Store Network', data: visualChartDatasets.headcountHistory.store },
-    { name: 'Head Office (HQ)', data: visualChartDatasets.headcountHistory.hq }
+    { name: 'Store Network', data: [0, 0, dynamicStoreHeadcount] },
+    { name: 'Head Office (HQ)', data: [0, 0, dynamicHqHeadcount] }
   ];
+
+  const costDivisions = apiProd?.costByDivision && Array.isArray(apiProd.costByDivision) && apiProd.costByDivision.length > 0
+    ? apiProd.costByDivision
+    : [
+        { division: 'Commercial Business', budget: 0, actual: 0 },
+        { division: 'Supply Chain', budget: 0, actual: 0 },
+        { division: 'Business Support', budget: 0, actual: 0 },
+        { division: 'Store Operations', budget: apiProd?.totalBudgetCost || 0, actual: apiProd?.totalActualCost || 0 }
+      ];
+
+  const labourCategories = costDivisions.map((d: any) => d.division);
+  const labourBudgetSeries = costDivisions.map((d: any) => Number(((d.budget || 0) / 1000000000).toFixed(2)));
+  const labourActualSeries = costDivisions.map((d: any) => Number(((d.actual || 0) / 1000000000).toFixed(2)));
 
   const labourCostChartOptions: ApexCharts.ApexOptions = {
     chart: {
@@ -102,7 +126,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
       enabled: false
     },
     xaxis: {
-      categories: visualChartDatasets.labourCostBudgetActual.categories,
+      categories: labourCategories,
       labels: {
         style: {
           colors: '#64748B',
@@ -140,17 +164,45 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
   };
 
   const labourCostSeries = [
-    { name: 'Budget Bulanan', data: visualChartDatasets.labourCostBudgetActual.budget },
-    { name: 'Realisasi Aktual', data: visualChartDatasets.labourCostBudgetActual.actual }
+    { name: 'Budget Bulanan', data: labourBudgetSeries },
+    { name: 'Realisasi Aktual', data: labourActualSeries }
   ];
+
+  const budgetCostTotal = apiProd?.totalBudgetCost || 0;
+  const actualCostTotal = apiProd?.totalActualCost || 0;
+  const variancePct = budgetCostTotal > 0
+    ? (((actualCostTotal - budgetCostTotal) / budgetCostTotal) * 100).toFixed(1)
+    : '0.0';
+  const totalRunrateDisplay = `Rp ${(actualCostTotal / 1000000000).toFixed(2)} Miliar`;
+  const diffCost = budgetCostTotal - actualCostTotal;
+  const savingDisplay = diffCost >= 0
+    ? `(Hemat Rp ${(diffCost / 1000000).toFixed(0)}Jt)`
+    : `(Lebih Rp ${(Math.abs(diffCost) / 1000000).toFixed(0)}Jt)`;
+
+  const genderLaki = apiDemo?.distribution?.byGender?.['LAKI_LAKI'] || apiDemo?.distribution?.byGender?.['Laki-laki'] || 0;
+  const genderPerempuan = apiDemo?.distribution?.byGender?.['PEREMPUAN'] || apiDemo?.distribution?.byGender?.['Perempuan'] || 0;
+  const genderSeries = [genderLaki, genderPerempuan];
+  const genderTotal = genderLaki + genderPerempuan;
+  const genderLakiPct = genderTotal > 0 ? Math.round((genderLaki / genderTotal) * 100) : 0;
+  const genderPerempuanPct = genderTotal > 0 ? Math.round((genderPerempuan / genderTotal) * 100) : 0;
+
+  const totalSpCount = apiSp?.totalSpIssued || 0;
+  const storeSpCount = apiSp?.storeSp?.total || 0;
+  const hqSpCount = apiSp?.hqSp?.total || 0;
+  const ttCount = (apiSp?.storeSp?.tataTertib || 0) + (apiSp?.hqSp?.tataTertib || 0);
+  const nonTtCount = (apiSp?.storeSp?.nonTataTertib || 0) + (apiSp?.hqSp?.nonTataTertib || 0);
+  const disputesSelesai = apiSp?.disputes?.corporate?.selesai || 0;
+  const disputesBipartit = apiSp?.disputes?.corporate?.bipartit || 0;
+  const disputesMediasi = apiSp?.disputes?.corporate?.mediasi || 0;
+  const disputesTotal = apiSp?.disputes?.corporate?.total || 0;
 
   const genderDonutOptions: ApexCharts.ApexOptions = {
     chart: {
       type: 'donut',
       fontFamily: "'Geist', sans-serif"
     },
-    colors: visualChartDatasets.genderComposition.colors,
-    labels: visualChartDatasets.genderComposition.labels,
+    colors: ['#0F172A', '#C8102E'],
+    labels: ['Laki-laki', 'Perempuan'],
     dataLabels: { enabled: false },
     legend: { show: false },
     stroke: { width: 2, colors: ['#ffffff'] },
@@ -167,7 +219,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
               fontSize: '13px',
               fontFamily: "'Geist', sans-serif",
               fontWeight: 700,
-              formatter: () => '1,271'
+              formatter: () => genderTotal.toLocaleString()
             }
           }
         }
@@ -175,6 +227,18 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
     },
     tooltip: { theme: 'dark' }
   };
+
+  const employeeLevels = apiDemo?.distribution?.byEmployeeLevel && Array.isArray(apiDemo.distribution.byEmployeeLevel) && apiDemo.distribution.byEmployeeLevel.length > 0
+    ? apiDemo.distribution.byEmployeeLevel
+    : [
+        { level: 'BOD+', count: 0, percentage: 0 },
+        { level: 'Manager', count: 0, percentage: 0 },
+        { level: 'Associate Manager', count: 0, percentage: 0 },
+        { level: 'Lead / Head', count: 0, percentage: 0 },
+        { level: 'Associate Lead', count: 0, percentage: 0 },
+        { level: 'Team Leader', count: 0, percentage: 0 },
+        { level: 'Staff / Crew / SA', count: 0, percentage: 0 }
+      ];
 
   const levelFunnelOptions: ApexCharts.ApexOptions = {
     chart: {
@@ -197,7 +261,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
       textAnchor: 'start',
       formatter: (_val, opt?: { dataPointIndex: number }) => {
         const idx = opt?.dataPointIndex ?? 0;
-        const item = visualChartDatasets.employeeLevels[idx] || visualChartDatasets.employeeLevels[0];
+        const item = employeeLevels[idx] || employeeLevels[0];
         return `${item.count} (${item.percentage}%)`;
       },
       offsetX: 10,
@@ -208,7 +272,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
       }
     },
     xaxis: {
-      categories: visualChartDatasets.employeeLevels.map((l) => l.level),
+      categories: employeeLevels.map((l: any) => l.level),
       labels: {
         show: false
       }
@@ -234,9 +298,15 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
   const levelSeries = [
     {
       name: 'Jumlah Karyawan',
-      data: visualChartDatasets.employeeLevels.map((l) => l.count)
+      data: employeeLevels.map((l: any) => l.count)
     }
   ];
+
+  const attendanceMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu'];
+  const attendanceHq = dashboardData?.attendance?.monthlyHq || [0, 0, 0, 0, 0, 0, 0, 0];
+  const attendanceStore = dashboardData?.attendance?.monthlyStore || [0, 0, 0, 0, 0, 0, 0, 0];
+  const avgAttendanceHq = dashboardData?.attendance?.avgHq ? `${dashboardData.attendance.avgHq}% Avg` : '0% Avg';
+  const avgAttendanceStore = dashboardData?.attendance?.avgStore ? `${dashboardData.attendance.avgStore}% Avg` : '0% Avg';
 
   const attendanceChartOptions: ApexCharts.ApexOptions = {
     chart: {
@@ -252,13 +322,13 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
       dashArray: [0, 2]
     },
     xaxis: {
-      categories: visualChartDatasets.attendanceTrend2026.months,
+      categories: attendanceMonths,
       labels: {
         style: { colors: '#64748B', fontSize: '12px' }
       }
     },
     yaxis: {
-      min: 60,
+      min: 0,
       max: 100,
       labels: {
         formatter: (val) => `${val}%`,
@@ -284,9 +354,13 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
   };
 
   const attendanceSeries = [
-    { name: '% Kehadiran HQ (81.6% Avg)', data: visualChartDatasets.attendanceTrend2026.hqAttendance },
-    { name: '% Kehadiran Store (75.2% Avg)', data: visualChartDatasets.attendanceTrend2026.storeAttendance }
+    { name: `% Kehadiran HQ (${avgAttendanceHq})`, data: attendanceHq },
+    { name: `% Kehadiran Store (${avgAttendanceStore})`, data: attendanceStore }
   ];
+
+  const salesMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul'];
+  const salesMiliarData = dashboardData?.productivityTrend?.sales || [0, 0, 0, 0, 0, 0, 0];
+  const payrollRatioData = dashboardData?.productivityTrend?.payrollRatio || [0, 0, 0, 0, 0, 0, 0];
 
   const salesProductivityOptions: ApexCharts.ApexOptions = {
     chart: {
@@ -307,7 +381,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
       }
     },
     xaxis: {
-      categories: visualChartDatasets.salesProductivityMonthly.months,
+      categories: salesMonths,
       labels: {
         style: { colors: '#64748B', fontSize: '12px' }
       }
@@ -347,14 +421,77 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
     {
       name: 'Total Penjualan',
       type: 'column',
-      data: visualChartDatasets.salesProductivityMonthly.salesMiliar
+      data: salesMiliarData
     },
     {
       name: '% Gaji vs Sales (Ratio)',
       type: 'line',
-      data: visualChartDatasets.salesProductivityMonthly.payrollRatioPct
+      data: payrollRatioData
     }
   ];
+
+  const ageCategories = ['< 21 Thn', '21 – 25 Thn', '26 – 30 Thn', '31 – 40 Thn', '> 40 Thn'];
+  const ageCounts = [
+    apiDemo?.distribution?.byAgeBracket?.under21 || 0,
+    apiDemo?.distribution?.byAgeBracket?.age21To25 || 0,
+    apiDemo?.distribution?.byAgeBracket?.age26To30 || 0,
+    apiDemo?.distribution?.byAgeBracket?.age31To40 || 0,
+    apiDemo?.distribution?.byAgeBracket?.above40 || 0
+  ];
+  const agePercentages = ageCounts.map((cnt) =>
+    totalHeadcount > 0 ? Number(((cnt / totalHeadcount) * 100).toFixed(1)) : 0
+  );
+
+  const tenureLabels = ['< 1 Tahun', '1 – 3 Tahun', '3 – 5 Tahun', '> 5 Tahun'];
+  const tenureColors = ['#38BDF8', '#0F172A', '#F59E0B', '#16A34A'];
+  const tenureCounts = [
+    apiDemo?.distribution?.byTenureBracket?.under1Year || 0,
+    apiDemo?.distribution?.byTenureBracket?.year1To3 || 0,
+    apiDemo?.distribution?.byTenureBracket?.year3To5 || 0,
+    apiDemo?.distribution?.byTenureBracket?.above5Years || 0
+  ];
+
+  const turnoverRateDisplay = dashboardData?.turnoverAndRetention?.turnoverRate != null
+    ? `${Number(dashboardData.turnoverAndRetention.turnoverRate).toFixed(2)}%`
+    : '0.00%';
+  const voluntaryPct = dashboardData?.turnoverAndRetention?.voluntaryPct != null
+    ? `${Number(dashboardData.turnoverAndRetention.voluntaryPct).toFixed(1)}%`
+    : '0.0%';
+  const nonVoluntaryPct = dashboardData?.turnoverAndRetention?.nonVoluntaryPct != null
+    ? `${Number(dashboardData.turnoverAndRetention.nonVoluntaryPct).toFixed(1)}%`
+    : '0.0%';
+  const turnoverReasons: Array<{ reason: string; count: number; pct: number; color: string }> =
+    dashboardData?.turnoverAndRetention?.reasons || [];
+
+  const hqSickDisplay = dashboardData?.attendance?.hqSick != null ? `${dashboardData.attendance.hqSick}%` : '0%';
+  const hqLeaveDisplay = dashboardData?.attendance?.hqLeave != null ? `${dashboardData.attendance.hqLeave}%` : '0%';
+  const hqAlphaDisplay = dashboardData?.attendance?.hqAlpha != null ? `${dashboardData.attendance.hqAlpha}%` : '0%';
+  const storeAlphaDisplay = dashboardData?.attendance?.storeAlpha != null ? `${dashboardData.attendance.storeAlpha}%` : '0%';
+
+  const netSalesPerFte = apiProd?.revenuePerFte && parseFloat(apiProd.revenuePerFte) > 0
+    ? `Rp ${(parseFloat(apiProd.revenuePerFte) / 1000000).toFixed(2)} Jt`
+    : 'Rp 0 Jt';
+  const salesMultiplier = apiProd?.payrollMultiplier
+    ? `${parseFloat(apiProd.payrollMultiplier).toFixed(2)}x`
+    : '0x';
+  const ratioNormal = apiProd?.labourCostRatio
+    ? `${parseFloat(apiProd.labourCostRatio).toFixed(2)}%`
+    : '0.00%';
+
+  const peakSalesTitle = apiProd?.totalSales && apiProd.totalSales > 0
+    ? `Total Sales Rp ${(apiProd.totalSales / 1000000000).toFixed(1)}M`
+    : 'Rp 0';
+
+  const recruitmentFulfilled = dashboardData?.recruitment?.fulfilled || 0;
+  const recruitmentTarget = dashboardData?.recruitment?.target || 0;
+  const recruitmentPct = recruitmentTarget > 0 ? ((recruitmentFulfilled / recruitmentTarget) * 100).toFixed(1) : '0';
+
+  const kpiCompleted = dashboardData?.kpi?.completed || 0;
+  const kpiTotal = dashboardData?.kpi?.total || 0;
+  const kpiPct = kpiTotal > 0 ? ((kpiCompleted / kpiTotal) * 100).toFixed(1) : '0';
+
+  const avgTimeToHire = dashboardData?.recruitment?.avgTimeToHire ? `${dashboardData.recruitment.avgTimeToHire} Hari` : '0 Hari';
+  const costPerHire = dashboardData?.recruitment?.costPerHire ? `Rp ${(dashboardData.recruitment.costPerHire / 1000000).toFixed(2)}M` : 'Rp 0';
 
   return (
     <div className="space-y-6">
@@ -405,15 +542,15 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
           <div className="grid grid-cols-3 gap-2.5 pt-3.5 mt-2 border-t border-slate-100 text-center">
             <div className="bg-slate-50 p-2.5 rounded-xl">
               <span className="text-xs text-slate-500 uppercase font-semibold block mb-0.5">2024 Basis</span>
-              <span className="text-base font-bold font-mono text-slate-900 tabular-nums">1,550</span>
+              <span className="text-base font-bold font-mono text-slate-900 tabular-nums">0</span>
             </div>
             <div className="bg-slate-50 p-2.5 rounded-xl">
               <span className="text-xs text-slate-500 uppercase font-semibold block mb-0.5">2025 Konsolidasi</span>
-              <span className="text-base font-bold font-mono text-slate-900 tabular-nums">1,390</span>
+              <span className="text-base font-bold font-mono text-slate-900 tabular-nums">0</span>
             </div>
             <div className="bg-blue-50/60 p-2.5 rounded-xl border border-blue-100">
               <span className="text-xs text-blue-700 uppercase font-bold block mb-0.5">2026 Optimasi</span>
-              <span className="text-base font-bold font-mono text-blue-900 tabular-nums">1,271</span>
+              <span className="text-base font-bold font-mono text-blue-900 tabular-nums">{totalHeadcount.toLocaleString()}</span>
             </div>
           </div>
         </div>
@@ -428,7 +565,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
                 </h3>
               </div>
               <span className="px-2.5 py-1 rounded text-xs font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                -1.6% Variance
+                {variancePct}% Variance
               </span>
             </div>
 
@@ -440,7 +577,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
           <div className="pt-3 mt-2 border-t border-slate-100 flex items-center justify-between text-sm">
             <span className="text-slate-600 font-medium">Total Run-rate Bulanan:</span>
             <span className="font-mono font-bold text-slate-900 tabular-nums">
-              Rp 7.50 Miliar <span className="text-emerald-600 font-normal">(Hemat Rp 120Jt)</span>
+              {totalRunrateDisplay} <span className="text-emerald-600 font-normal">{savingDisplay}</span>
             </span>
           </div>
         </div>
@@ -457,7 +594,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
             </div>
 
             <div className="py-2 flex justify-center">
-              <Chart options={genderDonutOptions} series={visualChartDatasets.genderComposition.series} type="donut" width="100%" height={190} />
+              <Chart options={genderDonutOptions} series={genderSeries} type="donut" width="100%" height={190} />
             </div>
 
             <div className="space-y-2 pt-1 text-sm">
@@ -466,7 +603,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
                   <span className="w-2.5 h-2.5 rounded-full bg-[#0F172A]" /> Laki-laki
                 </span>
                 <span className="font-mono font-bold text-slate-900 tabular-nums">
-                  686 <span className="text-slate-500 font-normal text-xs">(54%)</span>
+                  {genderLaki} <span className="text-slate-500 font-normal text-xs">({genderLakiPct}%)</span>
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -474,7 +611,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
                   <span className="w-2.5 h-2.5 rounded-full bg-[#C8102E]" /> Perempuan
                 </span>
                 <span className="font-mono font-bold text-slate-900 tabular-nums">
-                  585 <span className="text-slate-500 font-normal text-xs">(46%)</span>
+                  {genderPerempuan} <span className="text-slate-500 font-normal text-xs">({genderPerempuanPct}%)</span>
                 </span>
               </div>
             </div>
@@ -490,13 +627,15 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
               <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 font-heading">
                 Distribusi Usia
               </h3>
-              <span className="text-xs font-mono font-semibold text-slate-500">Rata-rata 24.2th</span>
+              <span className="text-xs font-mono font-semibold text-slate-500">
+                {apiDemo?.avgAge ? `Rata-rata ${apiDemo.avgAge}th` : 'Rata-rata 0th'}
+              </span>
             </div>
 
             <div className="space-y-2.5 pt-3">
-              {visualChartDatasets.ageComposition.categories.map((cat, idx) => {
-                const pct = visualChartDatasets.ageComposition.percentages[idx];
-                const count = visualChartDatasets.ageComposition.counts[idx];
+              {ageCategories.map((cat, idx) => {
+                const count = ageCounts[idx];
+                const pct = agePercentages[idx];
                 return (
                   <div key={idx} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
@@ -508,7 +647,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
                     <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
                       <div
                         className={`h-full rounded-full ${idx === 1 ? 'bg-[#C8102E]' : 'bg-slate-800'}`}
-                        style={{ width: `${pct * 1.8}%` }}
+                        style={{ width: `${Math.min(pct * 1.8, 100)}%` }}
                       />
                     </div>
                   </div>
@@ -517,7 +656,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
             </div>
           </div>
           <div className="pt-3 mt-3 border-t border-slate-100 text-xs font-medium text-slate-600">
-            63.6% karyawan tergolong Gen-Z muda produktif.
+            {((agePercentages[0] || 0) + (agePercentages[1] || 0)).toFixed(1)}% karyawan tergolong kelompok usia muda produktif.
           </div>
         </div>
 
@@ -527,14 +666,16 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
               <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 font-heading">
                 Komposisi Masa Kerja
               </h3>
-              <span className="text-xs font-mono font-semibold text-slate-500">Rata-rata 2.3th</span>
+              <span className="text-xs font-mono font-semibold text-slate-500">
+                {apiDemo?.avgTenure ? `Rata-rata ${apiDemo.avgTenure}th` : 'Rata-rata 0th'}
+              </span>
             </div>
 
             <div className="space-y-2.5 pt-3">
-              {visualChartDatasets.tenureComposition.labels.map((lbl, idx) => {
-                const count = visualChartDatasets.tenureComposition.series[idx];
-                const pct = ((count / 1271) * 100).toFixed(1);
-                const color = visualChartDatasets.tenureComposition.colors[idx];
+              {tenureLabels.map((lbl, idx) => {
+                const count = tenureCounts[idx];
+                const pct = totalHeadcount > 0 ? Number(((count / totalHeadcount) * 100).toFixed(1)) : 0;
+                const color = tenureColors[idx];
                 return (
                   <div key={idx} className="space-y-1">
                     <div className="flex items-center justify-between text-sm">
@@ -544,7 +685,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
                       </span>
                     </div>
                     <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+                      <div className="h-full rounded-full" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: color }} />
                     </div>
                   </div>
                 );
@@ -552,7 +693,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
             </div>
           </div>
           <div className="pt-3 mt-3 border-t border-slate-100 text-xs font-medium text-slate-600">
-            30.6% telah mengabdi &gt; 3 tahun (Core Staff & Leader).
+            {totalHeadcount > 0 ? (((tenureCounts[2] + tenureCounts[3]) / totalHeadcount) * 100).toFixed(1) : '0'}% telah mengabdi &gt; 3 tahun.
           </div>
         </div>
 
@@ -570,8 +711,10 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
             </div>
           </div>
           <div className="pt-3 border-t border-slate-100 text-xs font-medium text-slate-600 flex items-center justify-between">
-            <span>Struktur Ramping</span>
-            <span className="font-mono font-bold text-slate-900 text-sm">1:7.4 Rasio Leader</span>
+            <span>Struktur Organisasi</span>
+            <span className="font-mono font-bold text-slate-900 text-sm">
+              {apiDemo?.leaderStaffRatio || '1:0'} Rasio Leader
+            </span>
           </div>
         </div>
       </div>
@@ -595,35 +738,41 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
             <div className="my-3.5 p-3.5 bg-slate-50 rounded-xl flex items-center justify-between">
               <div>
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-0.5">Turnover Bulanan Aktual</span>
-                <span className="text-2xl font-black font-mono text-emerald-600 tabular-nums">0.77%</span>
+                <span className="text-2xl font-black font-mono text-emerald-600 tabular-nums">{turnoverRateDisplay}</span>
               </div>
               <div className="text-right">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-0.5">Voluntary vs Nonvoluntary</span>
-                <span className="text-sm font-mono font-bold text-slate-800">45.2% Sukarela • 54.8% Perusahaan</span>
+                <span className="text-sm font-mono font-bold text-slate-800">{voluntaryPct} Sukarela • {nonVoluntaryPct} Perusahaan</span>
               </div>
             </div>
 
             <div className="space-y-2 mt-4 text-sm">
               <span className="text-xs font-bold text-slate-600 uppercase tracking-wider block mb-1">
-                Kategori Alasan PHK / Resign (Data Aktual Excel)
+                Kategori Alasan PHK / Resign
               </span>
-              {visualChartDatasets.turnoverReasons.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50/70">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="text-slate-800 font-medium text-sm">{item.reason}</span>
+              {turnoverReasons.length > 0 ? (
+                turnoverReasons.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-50/70">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color || '#64748B' }} />
+                      <span className="text-slate-800 font-medium text-sm">{item.reason}</span>
+                    </div>
+                    <span className="font-mono font-bold text-slate-900 tabular-nums text-sm">
+                      {item.count} <span className="text-slate-500 font-normal text-xs">({item.pct}%)</span>
+                    </span>
                   </div>
-                  <span className="font-mono font-bold text-slate-900 tabular-nums text-sm">
-                    {item.count} <span className="text-slate-500 font-normal text-xs">({item.pct}%)</span>
-                  </span>
+                ))
+              ) : (
+                <div className="p-3 text-center text-xs text-slate-400 font-mono">
+                  Belum ada catatan turnover untuk periode ini
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
           <div className="pt-3 mt-4 border-t border-slate-100 text-xs text-slate-600 font-medium flex items-center justify-between">
             <span>Formula: Keluar / Avg Headcount × 100%</span>
-            <span className="font-mono font-bold text-emerald-600 text-sm">Sangat Sehat</span>
+            <span className="font-mono font-bold text-emerald-600 text-sm">Terkendali</span>
           </div>
         </div>
 
@@ -637,7 +786,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
                 </h3>
               </div>
               <span className="text-xs font-mono font-semibold text-slate-600">
-                Jan – Agu 2026
+                Tahun 2026
               </span>
             </div>
 
@@ -649,22 +798,22 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
           <div className="grid grid-cols-4 gap-2.5 pt-3.5 mt-2 border-t border-slate-100 text-center">
             <div className="bg-slate-50 p-2.5 rounded-xl">
               <span className="text-xs text-slate-500 uppercase font-semibold block mb-0.5">% Sakit HQ</span>
-              <span className="text-base font-bold font-mono text-slate-900 tabular-nums">13.9%</span>
+              <span className="text-base font-bold font-mono text-slate-900 tabular-nums">{hqSickDisplay}</span>
             </div>
             <div className="bg-slate-50 p-2.5 rounded-xl">
               <span className="text-xs text-slate-500 uppercase font-semibold block mb-0.5">% Cuti HQ</span>
-              <span className="text-base font-bold font-mono text-slate-900 tabular-nums">35.4%</span>
+              <span className="text-base font-bold font-mono text-slate-900 tabular-nums">{hqLeaveDisplay}</span>
             </div>
             <div className="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
               <span className="text-xs text-emerald-700 uppercase font-bold block mb-0.5">% Alpa HQ</span>
               <span className="text-base font-bold font-mono text-emerald-700 tabular-nums flex items-center justify-center gap-1">
-                0.55%
+                {hqAlphaDisplay}
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 inline" />
               </span>
             </div>
             <div className="bg-slate-50 p-2.5 rounded-xl">
               <span className="text-xs text-slate-500 uppercase font-semibold block mb-0.5">% Alpa Store</span>
-              <span className="text-base font-bold font-mono text-slate-900 tabular-nums">8.4%</span>
+              <span className="text-base font-bold font-mono text-slate-900 tabular-nums">{storeAlphaDisplay}</span>
             </div>
           </div>
         </div>
@@ -681,7 +830,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
                 </h3>
               </div>
               <span className="text-xs font-mono px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
-                Peak Lebaran Rp 30.5M
+                {peakSalesTitle}
               </span>
             </div>
 
@@ -693,15 +842,15 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
           <div className="pt-3 mt-2 border-t border-slate-100 grid grid-cols-3 gap-3">
             <div className="bg-slate-50 p-2.5 rounded-xl text-center">
               <span className="text-xs text-slate-500 uppercase font-semibold block mb-0.5">Net Sales / FTE</span>
-              <span className="text-base font-bold font-mono text-slate-900 tabular-nums">Rp 45.08 Jt</span>
+              <span className="text-base font-bold font-mono text-slate-900 tabular-nums">{netSalesPerFte}</span>
             </div>
             <div className="bg-slate-50 p-2.5 rounded-xl text-center">
               <span className="text-xs text-slate-500 uppercase font-semibold block mb-0.5">Sales Multiplier</span>
-              <span className="text-base font-bold font-mono text-emerald-600 tabular-nums">12.78x</span>
+              <span className="text-base font-bold font-mono text-emerald-600 tabular-nums">{salesMultiplier}</span>
             </div>
             <div className="bg-slate-50 p-2.5 rounded-xl text-center">
               <span className="text-xs text-slate-500 uppercase font-semibold block mb-0.5">Ratio Normal</span>
-              <span className="text-base font-bold font-mono text-slate-900 tabular-nums">7.82%</span>
+              <span className="text-base font-bold font-mono text-slate-900 tabular-nums">{ratioNormal}</span>
             </div>
           </div>
         </div>
@@ -716,7 +865,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
                 </h3>
               </div>
               <span className="text-xs font-mono px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold border border-slate-200/80">
-                Total SP: 31
+                Total SP: {totalSpCount}
               </span>
             </div>
 
@@ -726,18 +875,18 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
                   Kategori SP
                 </span>
                 <div className="text-base font-mono font-bold text-slate-900">
-                  25 Tata Tertib • 6 Non-TT
+                  {ttCount} Tata Tertib • {nonTtCount} Non-TT
                 </div>
-                <span className="text-xs text-slate-500 mt-1 block font-medium">Store: 25 | HQ: 6</span>
+                <span className="text-xs text-slate-500 mt-1 block font-medium">Store: {storeSpCount} | HQ: {hqSpCount}</span>
               </div>
               <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1">
-                  Status Sengketa (25)
+                  Status Sengketa ({disputesTotal})
                 </span>
                 <div className="text-base font-mono font-bold text-slate-900">
-                  13 Selesai • 9 Bipartit
+                  {disputesSelesai} Selesai • {disputesBipartit} Bipartit
                 </div>
-                <span className="text-xs text-slate-500 mt-1 block font-medium">3 Mediasi Disnaker</span>
+                <span className="text-xs text-slate-500 mt-1 block font-medium">{disputesMediasi} Mediasi Disnaker</span>
               </div>
             </div>
 
@@ -745,10 +894,12 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-slate-700 font-medium">Fulfillment Rekrutmen 2026:</span>
-                  <span className="font-mono font-bold text-slate-900 tabular-nums">3,180 / 3,450 (92.2%)</span>
+                  <span className="font-mono font-bold text-slate-900 tabular-nums">
+                    {recruitmentFulfilled.toLocaleString()} / {recruitmentTarget.toLocaleString()} ({recruitmentPct}%)
+                  </span>
                 </div>
                 <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
-                  <div className="h-full rounded-full bg-[var(--biensi-dark)]" style={{ width: '92.2%' }} />
+                  <div className="h-full rounded-full bg-[var(--biensi-dark)]" style={{ width: `${Math.min(Number(recruitmentPct), 100)}%` }} />
                 </div>
               </div>
 
@@ -756,20 +907,20 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = () => {
                 <div className="flex items-center justify-between mb-1.5 pt-0.5">
                   <span className="text-slate-700 font-medium">KPI Dashboard Completion 2026:</span>
                   <span className="font-mono font-bold text-[var(--biensi-red)] tabular-nums flex items-center gap-1.5">
-                    81 / 84 Posisi (96.4%)
+                    {kpiCompleted} / {kpiTotal} Posisi ({kpiPct}%)
                     <CheckCircle2 className="w-4 h-4 text-[var(--biensi-red)] inline" />
                   </span>
                 </div>
                 <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
-                  <div className="h-full rounded-full bg-[var(--biensi-red)]" style={{ width: '96.4%' }} />
+                  <div className="h-full rounded-full bg-[var(--biensi-red)]" style={{ width: `${Math.min(Number(kpiPct), 100)}%` }} />
                 </div>
               </div>
             </div>
           </div>
 
           <div className="pt-3.5 mt-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium">
-            <span>Avg Time to Hire: <strong className="text-slate-800 font-mono">14.2 Hari</strong> (&lt; 21 Hari)</span>
-            <span>Cost/Hire: <strong className="text-slate-800 font-mono">Rp 1.25M</strong></span>
+            <span>Avg Time to Hire: <strong className="text-slate-800 font-mono">{avgTimeToHire}</strong> (&lt; 21 Hari)</span>
+            <span>Cost/Hire: <strong className="text-slate-800 font-mono">{costPerHire}</strong></span>
           </div>
         </div>
       </div>

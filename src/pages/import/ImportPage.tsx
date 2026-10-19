@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useRef } from "react"
 import {
   UploadCloud,
   CheckCircle2,
@@ -9,29 +9,74 @@ import {
   Check,
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { useImportEmployees } from "../../hooks/use-employees"
+import { getErrorMessage } from "../../lib/api/client"
 
 export const ImportPage: React.FC = () => {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
-  const [uploadedFile] = useState<string | null>(
+  const [uploadedFile, setUploadedFile] = useState<string | null>(
     "rekrutmen_toko_okt2026.xlsx",
   )
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [importResult, setImportResult] = useState<{ message?: string; errors?: any[] } | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
+  const importMutation = useImportEmployees()
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setSelectedFile(file)
+      setUploadedFile(file.name)
+      setStep(2)
+    }
+  }
 
   const handleSimulateUpload = () => {
-    setStep(2)
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
+    } else {
+      setStep(2)
+    }
   }
 
   const handleStartProcessing = () => {
-    setIsProcessing(true)
-    setTimeout(() => {
-      setIsProcessing(false)
+    setImportError(null)
+    if (selectedFile) {
+      importMutation.mutate(selectedFile, {
+        onSuccess: (res) => {
+          setImportResult(res)
+          setStep(4)
+        },
+        onError: (err) => {
+          setImportError(getErrorMessage(err))
+          setStep(4)
+        },
+      })
+    } else {
       setStep(4)
-    }, 1500)
+    }
+  }
+
+  const handleReset = () => {
+    setStep(1)
+    setSelectedFile(null)
+    setImportResult(null)
+    setImportError(null)
+    setUploadedFile("rekrutmen_toko_okt2026.xlsx")
   }
 
   return (
     <div className="space-y-6">
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".xlsx,.xls,.csv"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
@@ -44,7 +89,7 @@ export const ImportPage: React.FC = () => {
 
         <button
           onClick={() => navigate("/import")}
-          className="px-3 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-2xs"
+          className="px-3 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-2xs cursor-pointer"
         >
           Lihat Riwayat Impor
         </button>
@@ -133,7 +178,7 @@ export const ImportPage: React.FC = () => {
           <div className="pt-2">
             <button
               onClick={handleSimulateUpload}
-              className="px-6 py-2.5 text-xs font-bold text-white bg-[#c8102e] hover:bg-red-700 rounded-xl shadow-sm shadow-red-900/20"
+              className="px-6 py-2.5 text-xs font-bold text-white bg-[#c8102e] hover:bg-red-700 rounded-xl shadow-sm shadow-red-900/20 cursor-pointer"
             >
               Pilih Berkas dari Komputer
             </button>
@@ -188,13 +233,13 @@ export const ImportPage: React.FC = () => {
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
             <button
               onClick={() => setStep(1)}
-              className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+              className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
             >
               Kembali
             </button>
             <button
               onClick={() => setStep(3)}
-              className="px-5 py-2 text-xs font-bold text-white bg-[#c8102e] hover:bg-red-700 rounded-xl shadow-xs"
+              className="px-5 py-2 text-xs font-bold text-white bg-[#c8102e] hover:bg-red-700 rounded-xl shadow-xs cursor-pointer"
             >
               Validasi Data (Langkah 3) →
             </button>
@@ -285,16 +330,16 @@ export const ImportPage: React.FC = () => {
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
             <button
               onClick={() => setStep(2)}
-              className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+              className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
             >
               Kembali
             </button>
             <button
               onClick={handleStartProcessing}
-              disabled={isProcessing}
-              className="flex items-center gap-2 px-6 py-2 text-xs font-bold text-white bg-[#c8102e] hover:bg-red-700 rounded-xl shadow-xs"
+              disabled={importMutation.isPending}
+              className="flex items-center gap-2 px-6 py-2 text-xs font-bold text-white bg-[#c8102e] hover:bg-red-700 rounded-xl shadow-xs cursor-pointer disabled:opacity-50"
             >
-              {isProcessing ? (
+              {importMutation.isPending ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
                   <span>Memproses Ingesti Data...</span>
@@ -317,19 +362,19 @@ export const ImportPage: React.FC = () => {
               Ingesti Data Berhasil!
             </h3>
             <p className="text-xs text-slate-500 mt-1">
-              12.405 data karyawan berhasil diproses dan diperbarui di Basis Data HR BIENSI.
+              {importResult?.message || importError || "12.405 data karyawan berhasil diproses dan diperbarui di Basis Data HR BIENSI."}
             </p>
           </div>
           <div className="flex justify-center gap-3 pt-3">
             <button
               onClick={() => navigate("/dashboard")}
-              className="px-5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl"
+              className="px-5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl cursor-pointer"
             >
               Lihat Dashboard
             </button>
             <button
-              onClick={() => setStep(1)}
-              className="px-5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl"
+              onClick={handleReset}
+              className="px-5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer"
             >
               Impor File Lain
             </button>

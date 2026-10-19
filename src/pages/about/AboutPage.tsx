@@ -1,19 +1,9 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-
-interface Post {
-  id: number;
-  title: string;
-  body: string;
-  userId: number;
-}
+import { useDepartments } from '../../hooks/use-dashboard';
 
 export const AboutPage: React.FC = () => {
-  const { data, isLoading, isError, error } = useQuery<Post[]>({
-    queryKey: ['posts'],
-    queryFn: () => [],
-  });
+  const { data, isLoading, isError, error } = useDepartments();
 
   const chartData = [
     { name: 'Jan', total: 40 },
@@ -49,12 +39,12 @@ export const AboutPage: React.FC = () => {
       <div className="bg-white p-5 rounded-2xl shadow-2xs border border-slate-200/90">
         <h3 className="text-sm font-bold text-slate-800 mb-2 font-heading">Recent API Data (Axios + Query)</h3>
         {isLoading && <p className="text-sm text-slate-400">Loading data...</p>}
-        {isError && <p className="text-sm text-red-500">Error: {error.message}</p>}
+        {isError && <p className="text-sm text-red-500">Error: {(error as Error).message}</p>}
         {data && data.length > 0 ? (
           <ul className="divide-y divide-slate-100">
-            {data.map((post) => (
-              <li key={post.id} className="py-2">
-                <p className="font-medium text-sm text-slate-900 capitalize">{post.title}</p>
+            {data.map((item: any, idx: number) => (
+              <li key={item.id || idx} className="py-2">
+                <p className="font-medium text-sm text-slate-900 capitalize">{item.name || item.title}</p>
               </li>
             ))}
           </ul>

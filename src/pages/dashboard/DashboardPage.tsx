@@ -11,6 +11,7 @@ import { ExecutiveHeroMetrics } from "../../components/dashboard/ExecutiveHeroMe
 import { Phase1VisualCharts } from "../../components/dashboard/Phase1VisualCharts"
 import { Phase1MetricsTable } from "../../components/dashboard/Phase1MetricsTable"
 import { QuickActionsModal } from "../../components/ui/QuickActionsModal"
+import { useDashboardSummary, useDivisions, useDepartments, useStores } from "../../hooks/use-dashboard"
 
 export const DashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"visual" | "matrix" | "both">("both")
@@ -23,6 +24,11 @@ export const DashboardPage: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false)
   const yearDropdownRef = useRef<HTMLDivElement>(null)
+
+  const { data: dashboardResponse } = useDashboardSummary(selectedYear, selectedScope)
+  const { data: divisionsData } = useDivisions()
+  const { data: departmentsData } = useDepartments()
+  const { data: storesData } = useStores()
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -194,9 +200,17 @@ export const DashboardPage: React.FC = () => {
               className="w-full px-3 py-2 text-sm font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-red-500"
             >
               <option>Semua Divisi</option>
-              <option>Commercial Business</option>
-              <option>Supply Chain</option>
-              <option>Business Support</option>
+              {divisionsData && divisionsData.length > 0 ? (
+                divisionsData.map((d: any) => (
+                  <option key={d.id || d.name} value={d.name}>{d.name}</option>
+                ))
+              ) : (
+                <>
+                  <option>Commercial Business</option>
+                  <option>Supply Chain</option>
+                  <option>Business Support</option>
+                </>
+              )}
             </select>
           </div>
 
@@ -210,18 +224,26 @@ export const DashboardPage: React.FC = () => {
               className="w-full px-3 py-2 text-sm font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-red-500"
             >
               <option>Semua Departemen</option>
-              <option>Marketing</option>
-              <option>Sales Online</option>
-              <option>Sales Offline</option>
-              <option>Merchandising</option>
-              <option>Product Development</option>
-              <option>Production</option>
-              <option>Research & Development</option>
-              <option>Warehouse Finished Goods</option>
-              <option>Logistics</option>
-              <option>Finance</option>
-              <option>IT</option>
-              <option>Human Resource</option>
+              {departmentsData && departmentsData.length > 0 ? (
+                departmentsData.map((d: any) => (
+                  <option key={d.id || d.name} value={d.name}>{d.name}</option>
+                ))
+              ) : (
+                <>
+                  <option>Marketing</option>
+                  <option>Sales Online</option>
+                  <option>Sales Offline</option>
+                  <option>Merchandising</option>
+                  <option>Product Development</option>
+                  <option>Production</option>
+                  <option>Research & Development</option>
+                  <option>Warehouse Finished Goods</option>
+                  <option>Logistics</option>
+                  <option>Finance</option>
+                  <option>IT</option>
+                  <option>Human Resource</option>
+                </>
+              )}
             </select>
           </div>
 
@@ -235,9 +257,17 @@ export const DashboardPage: React.FC = () => {
               className="w-full px-3 py-2 text-sm font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-1 focus:ring-red-500"
             >
               <option>Semua Tipe Store</option>
-              <option>Family Store (FS)</option>
-              <option>Showroom (Mall)</option>
-              <option>Counter (Dept Store/YDS)</option>
+              {storesData && storesData.length > 0 ? (
+                Array.from(new Set(storesData.map((s) => s.storeType).filter(Boolean))).map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))
+              ) : (
+                <>
+                  <option>Family Store (FS)</option>
+                  <option>Showroom (Mall)</option>
+                  <option>Counter (Dept Store/YDS)</option>
+                </>
+              )}
             </select>
           </div>
 
@@ -261,12 +291,14 @@ export const DashboardPage: React.FC = () => {
       <ExecutiveHeroMetrics
         selectedYear={selectedYear}
         selectedScope={selectedScope}
+        dashboardData={dashboardResponse}
       />
 
       {activeTab === "visual" && (
         <Phase1VisualCharts
           selectedYear={selectedYear}
           selectedScope={selectedScope}
+          dashboardData={dashboardResponse}
         />
       )}
 
@@ -274,6 +306,7 @@ export const DashboardPage: React.FC = () => {
         <Phase1MetricsTable
           selectedYear={selectedYear}
           selectedScope={selectedScope}
+          dashboardData={dashboardResponse}
         />
       )}
 
@@ -282,10 +315,12 @@ export const DashboardPage: React.FC = () => {
           <Phase1VisualCharts
             selectedYear={selectedYear}
             selectedScope={selectedScope}
+            dashboardData={dashboardResponse}
           />
           <Phase1MetricsTable
             selectedYear={selectedYear}
             selectedScope={selectedScope}
+            dashboardData={dashboardResponse}
           />
         </div>
       )}

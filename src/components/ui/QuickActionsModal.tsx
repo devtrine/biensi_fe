@@ -8,6 +8,8 @@ import {
   Check,
 } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { useCreateEmployee } from "../../hooks/use-employees"
+import { getErrorMessage } from "../../lib/api/client"
 
 interface QuickActionsModalProps {
   isOpen: boolean
@@ -30,20 +32,40 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
     employmentType: "PKWT",
   })
   const [savedSuccess, setSavedSuccess] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const navigate = useNavigate()
+  const createEmployeeMutation = useCreateEmployee()
 
   if (!isOpen) return null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.name) return
-    setSavedSuccess(true)
-    setTimeout(() => {
-      setSavedSuccess(false)
-      setActiveTab("menu")
-      if (onAddEmployeeSuccess) onAddEmployeeSuccess(formData.name)
-      onClose()
-    }, 1200)
+    setErrorMessage(null)
+    const empNo = 'EMP-' + Math.floor(10000 + Math.random() * 90000)
+    createEmployeeMutation.mutate(
+      {
+        employeeNo: empNo,
+        fullName: formData.name,
+        employmentType: formData.employmentType.includes('PKWTT') ? 'PKWTT' : 'PKWT',
+        joinDate: new Date().toISOString().split('T')[0],
+        status: 'ACTIVE'
+      },
+      {
+        onSuccess: () => {
+          setSavedSuccess(true)
+          setTimeout(() => {
+            setSavedSuccess(false)
+            setActiveTab("menu")
+            if (onAddEmployeeSuccess) onAddEmployeeSuccess(formData.name)
+            onClose()
+          }, 1200)
+        },
+        onError: (err) => {
+          setErrorMessage(getErrorMessage(err))
+        }
+      }
+    )
   }
 
   return (
@@ -70,7 +92,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -82,7 +104,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab("addEmployee")}
-                className="flex flex-col items-start p-4 rounded-xl border border-slate-200 hover:border-red-300 hover:bg-red-50/40 text-left transition-all group"
+                className="flex flex-col items-start p-4 rounded-xl border border-slate-200 hover:border-red-300 hover:bg-red-50/40 text-left transition-all group cursor-pointer"
               >
                 <div className="w-10 h-10 rounded-lg bg-red-100 text-red-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                   <UserPlus className="w-5 h-5" />
@@ -101,7 +123,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
                   navigate("/import")
                   onClose()
                 }}
-                className="flex flex-col items-start p-4 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 text-left transition-all group"
+                className="flex flex-col items-start p-4 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 text-left transition-all group cursor-pointer"
               >
                 <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                   <FileSpreadsheet className="w-5 h-5" />
@@ -120,7 +142,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
                   navigate("/dashboard")
                   onClose()
                 }}
-                className="flex flex-col items-start p-4 rounded-xl border border-slate-200 hover:border-amber-300 hover:bg-amber-50/40 text-left transition-all group"
+                className="flex flex-col items-start p-4 rounded-xl border border-slate-200 hover:border-amber-300 hover:bg-amber-50/40 text-left transition-all group cursor-pointer"
               >
                 <div className="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                   <RefreshCw className="w-5 h-5" />
@@ -139,7 +161,7 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
                   navigate("/dashboard")
                   onClose()
                 }}
-                className="flex flex-col items-start p-4 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50/40 text-left transition-all group"
+                className="flex flex-col items-start p-4 rounded-xl border border-slate-200 hover:border-purple-300 hover:bg-purple-50/40 text-left transition-all group cursor-pointer"
               >
                 <div className="w-10 h-10 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                   <AlertTriangle className="w-5 h-5" />
@@ -168,6 +190,12 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
                 </div>
               ) : (
                 <>
+                  {errorMessage && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+                      {errorMessage}
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -282,15 +310,16 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setActiveTab("menu")}
-                      className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+                      className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
                     >
                       Kembali
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 text-xs font-semibold text-white bg-[#c8102e] hover:bg-red-700 rounded-lg shadow-sm"
+                      disabled={createEmployeeMutation.isPending}
+                      className="px-4 py-2 text-xs font-semibold text-white bg-[#c8102e] hover:bg-red-700 rounded-lg shadow-sm cursor-pointer disabled:opacity-50"
                     >
-                      Simpan & Tambah ke Daftar
+                      {createEmployeeMutation.isPending ? "Menyimpan..." : "Simpan & Tambah ke Daftar"}
                     </button>
                   </div>
                 </>

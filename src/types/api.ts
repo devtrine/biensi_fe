@@ -1,0 +1,26 @@
+export interface ApiResponse<T> {
+  success: boolean
+  data: T
+  message?: string
+}
+
+export interface PaginatedResponse<T> {
+  success: boolean
+  data: T[]
+  message?: string
+  pagination?: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}
+
+export interface ApiErrorResponse {
+  success: false
+  error?: {
+    code: string
+    message: string
+  }
+  message?: string
+}

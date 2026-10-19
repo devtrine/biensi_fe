@@ -10,6 +10,7 @@ import {
   Settings as SettingsIcon,
 } from "lucide-react"
 import { Link } from "react-router-dom"
+import { useCurrentUser, useLogout } from "../../hooks/use-auth"
 import { QuestNavigatorModal } from "../ui/QuestNavigatorModal"
 
 interface TopbarProps {
@@ -23,6 +24,14 @@ export const Topbar: React.FC<TopbarProps> = ({
 }) => {
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showQuestNavigator, setShowQuestNavigator] = useState(false)
+
+  const { data: profile } = useCurrentUser()
+  const logoutMutation = useLogout()
+
+  const handleLogout = () => {
+    setShowProfileMenu(false)
+    logoutMutation.mutate()
+  }
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-white border-b border-slate-200/80 px-4 flex items-center justify-between shadow-xs">
@@ -77,17 +86,17 @@ export const Topbar: React.FC<TopbarProps> = ({
             className="flex items-center gap-3 p-1 rounded-lg hover:bg-slate-100 transition-colors text-left cursor-pointer"
           >
             <img
-              src="https://cdn.vectorstock.com/i/1000v/92/05/panda-cartoon-cute-animals-vector-39469205.jpg"
-              alt="Budi Santoso"
+              src={profile?.photoUrl || "https://cdn.vectorstock.com/i/1000v/92/05/panda-cartoon-cute-animals-vector-39469205.jpg"}
+              alt={profile?.name || "Budi Santoso"}
               className="w-9 h-9 rounded-full object-cover ring-2 ring-red-500/20"
             />
             <div className="hidden md:block">
               <div className="text-sm font-bold text-slate-900 flex items-center gap-1">
-                <span>Muntazier</span>
+                <span>{profile?.name || "Muntazier"}</span>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
               </div>
               <div className="text-xs text-slate-500 font-medium">
-                Admin HR Senior
+                {profile?.role || "Admin HR Senior"}
               </div>
             </div>
           </button>
@@ -95,9 +104,9 @@ export const Topbar: React.FC<TopbarProps> = ({
           {showProfileMenu && (
             <div className="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in duration-100">
               <div className="px-4 py-2.5 border-b border-slate-100">
-                <p className="text-sm font-bold text-slate-900">Budi Santoso</p>
+                <p className="text-sm font-bold text-slate-900">{profile?.name || "Budi Santoso"}</p>
                 <p className="text-xs text-slate-500">
-                  budi.santoso@biensi.co.id
+                  {profile?.email || "budi.santoso@biensi.co.id"}
                 </p>
                 <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded">
                   <CheckCircle2 className="w-3.5 h-3.5" /> Terhubung Live Engine
@@ -122,7 +131,7 @@ export const Topbar: React.FC<TopbarProps> = ({
               <div className="border-t border-slate-100 pt-1">
                 <button
                   type="button"
-                  onClick={() => setShowProfileMenu(false)}
+                  onClick={handleLogout}
                   className="flex items-center gap-2.5 w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                 >
                   <LogOut className="w-4 h-4" /> Keluar

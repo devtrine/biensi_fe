@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { Search, X, User, Building, MapPin, ArrowRight } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import { mockEmployees } from "../../data/mockData"
+import { useEmployees } from "../../hooks/use-employees"
 
 interface SearchModalProps {
   isOpen: boolean
@@ -30,17 +30,19 @@ export const SearchModal: React.FC<SearchModalProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [isOpen, onClose])
 
+  const { data: apiEmployees } = useEmployees(query.trim() || undefined)
+
   if (!isOpen) return null
 
-  const filteredEmployees = query.trim()
-    ? mockEmployees.filter(
-        (emp) =>
-          emp.name.toLowerCase().includes(query.toLowerCase()) ||
-          emp.id.toLowerCase().includes(query.toLowerCase()) ||
-          emp.department.toLowerCase().includes(query.toLowerCase()) ||
-          emp.position.toLowerCase().includes(query.toLowerCase()),
-      )
-    : mockEmployees.slice(0, 4)
+  const displayEmployees = Array.isArray(apiEmployees) && apiEmployees.length > 0
+    ? apiEmployees.slice(0, 6).map((emp: any) => ({
+        id: emp.employeeNo || emp.id,
+        name: emp.fullName || emp.name,
+        position: emp.position?.name || emp.position || 'Associate',
+        department: emp.department?.name || emp.store?.storeName || emp.department || 'HQ',
+        avatar: emp.photoUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      }))
+    : []
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
@@ -74,7 +76,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
             Karyawan & Rekan Kerja
           </div>
           <div className="space-y-1">
-            {filteredEmployees.map((emp) => (
+            {displayEmployees.map((emp: any) => (
               <div
                 key={emp.id}
                 onClick={() => {
@@ -119,7 +121,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 navigate("/dashboard")
                 onClose()
               }}
-              className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-left text-xs font-medium text-slate-700"
+              className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-left text-xs font-medium text-slate-700 cursor-pointer"
             >
               <User className="w-4 h-4 text-blue-500" />
               Jumlah Tenaga Kerja
@@ -129,7 +131,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 navigate("/import")
                 onClose()
               }}
-              className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-left text-xs font-medium text-slate-700"
+              className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-left text-xs font-medium text-slate-700 cursor-pointer"
             >
               <Building className="w-4 h-4 text-red-500" />
               Impor Data Massal
@@ -139,7 +141,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 navigate("/dashboard")
                 onClose()
               }}
-              className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-left text-xs font-medium text-slate-700"
+              className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-left text-xs font-medium text-slate-700 cursor-pointer"
             >
               <MapPin className="w-4 h-4 text-amber-500" />
               Performa Toko
@@ -149,7 +151,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
                 navigate("/dashboard")
                 onClose()
               }}
-              className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-left text-xs font-medium text-slate-700"
+              className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-left text-xs font-medium text-slate-700 cursor-pointer"
             >
               <ArrowRight className="w-4 h-4 text-emerald-500" />
               Arus Aktivitas Sistem

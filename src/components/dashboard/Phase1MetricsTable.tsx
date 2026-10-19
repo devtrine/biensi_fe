@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { phase1Metrics } from '../../data/phase1Data';
 import {
   Search,
@@ -12,11 +12,13 @@ import {
 interface Phase1MetricsTableProps {
   selectedYear: '2026' | '2025' | '2024';
   selectedScope: 'corporate' | 'hq' | 'store';
+  dashboardData?: any;
 }
 
 export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
   selectedYear,
   selectedScope,
+  dashboardData,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
@@ -35,7 +37,256 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
     'Industrial Relation'
   ];
 
-  const filteredMetrics = phase1Metrics
+  const computedMetrics = useMemo(() => {
+    const scopeData = dashboardData?.summary?.scopeBreakdown;
+    const apiDemo = dashboardData?.summary?.demographics;
+    const apiProd = dashboardData?.summary?.productivity;
+    const apiSp = dashboardData?.industrialAndSp;
+
+    if (!scopeData && !apiDemo && !apiProd) {
+      return phase1Metrics;
+    }
+
+    const corp = scopeData?.corporate || {};
+    const hq = scopeData?.hq || {};
+    const store = scopeData?.store || {};
+
+    return phase1Metrics.map((m) => {
+      if (m.no === 1) {
+        const cCount = corp.headcount || apiDemo?.totalHeadcount || 0;
+        const hCount = hq.headcount || apiDemo?.hqHeadcount || 0;
+        const sCount = store.headcount || apiDemo?.storeHeadcount || 0;
+        return {
+          ...m,
+          totalCorporate: cCount,
+          hq: hCount,
+          store: sCount,
+          formattedCorporate: cCount > 0 ? `${cCount.toLocaleString()} Orang` : '-',
+          formattedHQ: hCount > 0 ? `${hCount.toLocaleString()} Orang` : '-',
+          formattedStore: sCount > 0 ? `${sCount.toLocaleString()} Orang` : '-',
+          status: cCount > 0 ? 'optimal' : 'neutral',
+          statusLabel: cCount > 0 ? 'Tersedia' : '-',
+        };
+      }
+      if (m.no === 2) {
+        const cCount = corp.headcount || apiDemo?.totalHeadcount || 0;
+        const hCount = hq.headcount || apiDemo?.hqHeadcount || 0;
+        const sCount = store.headcount || apiDemo?.storeHeadcount || 0;
+        return {
+          ...m,
+          totalCorporate: cCount,
+          hq: hCount,
+          store: sCount,
+          formattedCorporate: cCount > 0 ? `${cCount.toLocaleString()} Orang Tersebar` : '-',
+          formattedHQ: hCount > 0 ? `${hCount.toLocaleString()} Orang HQ` : '-',
+          formattedStore: sCount > 0 ? `${sCount.toLocaleString()} Orang Store` : '-',
+          status: cCount > 0 ? 'optimal' : 'neutral',
+          statusLabel: cCount > 0 ? 'Terdistribusi' : '-',
+        };
+      }
+      if (m.no === 3) {
+        const actualCost = apiProd?.totalActualCost || 0;
+        return {
+          ...m,
+          totalCorporate: actualCost,
+          formattedCorporate: actualCost > 0 ? `Rp ${(actualCost / 1000000000).toFixed(2)} Miliar` : '-',
+          status: actualCost > 0 ? 'optimal' : 'neutral',
+          statusLabel: actualCost > 0 ? 'Terkendali' : '-',
+        };
+      }
+      if (m.no === 5) {
+        const turnoverRate = dashboardData?.turnoverAndRetention?.turnoverRate;
+        return {
+          ...m,
+          totalCorporate: turnoverRate || 0,
+          formattedCorporate: turnoverRate != null ? `${Number(turnoverRate).toFixed(2)}%` : '-',
+          status: turnoverRate != null ? 'optimal' : 'neutral',
+          statusLabel: turnoverRate != null ? 'Terkendali' : '-',
+        };
+      }
+      if (m.no === 6) {
+        const cGender = corp.byGender || apiDemo?.distribution?.byGender;
+        return {
+          ...m,
+          formattedCorporate: cGender ? `L: ${cGender.LAKI_LAKI || cGender['Laki-laki'] || 0} / P: ${cGender.PEREMPUAN || cGender['Perempuan'] || 0}` : '-',
+          formattedHQ: hq.byGender ? `L: ${hq.byGender.LAKI_LAKI || hq.byGender['Laki-laki'] || 0} / P: ${hq.byGender.PEREMPUAN || hq.byGender['Perempuan'] || 0}` : '-',
+          formattedStore: store.byGender ? `L: ${store.byGender.LAKI_LAKI || store.byGender['Laki-laki'] || 0} / P: ${store.byGender.PEREMPUAN || store.byGender['Perempuan'] || 0}` : '-',
+          status: cGender ? 'optimal' : 'neutral',
+          statusLabel: cGender ? 'Seimbang' : '-',
+        };
+      }
+      if (m.no === 7) {
+        const cAge = corp.avgAge || apiDemo?.avgAge || 0;
+        const hAge = hq.avgAge || 0;
+        const sAge = store.avgAge || 0;
+        return {
+          ...m,
+          totalCorporate: cAge,
+          hq: hAge,
+          store: sAge,
+          formattedCorporate: cAge > 0 ? `${cAge} Tahun` : '-',
+          formattedHQ: hAge > 0 ? `${hAge} Tahun` : '-',
+          formattedStore: sAge > 0 ? `${sAge} Tahun` : '-',
+          status: cAge > 0 ? 'optimal' : 'neutral',
+          statusLabel: cAge > 0 ? 'Produktif' : '-',
+        };
+      }
+      if (m.no === 8) {
+        const cTenure = corp.avgTenure || apiDemo?.avgTenure || 0;
+        const hTenure = hq.avgTenure || 0;
+        const sTenure = store.avgTenure || 0;
+        return {
+          ...m,
+          totalCorporate: cTenure,
+          hq: hTenure,
+          store: sTenure,
+          formattedCorporate: cTenure > 0 ? `${cTenure} Tahun` : '-',
+          formattedHQ: hTenure > 0 ? `${hTenure} Tahun` : '-',
+          formattedStore: sTenure > 0 ? `${sTenure} Tahun` : '-',
+          status: cTenure > 0 ? 'optimal' : 'neutral',
+          statusLabel: cTenure > 0 ? 'Stabil' : '-',
+        };
+      }
+      if (m.no === 18 && corp.byEmploymentStandard) {
+        return {
+          ...m,
+          totalCorporate: corp.byEmploymentStandard.pkwtt || 0,
+          hq: hq?.byEmploymentStandard?.pkwtt || 0,
+          store: store?.byEmploymentStandard?.pkwtt || 0,
+          formattedCorporate: `${corp.byEmploymentStandard.pkwtt || 0} Orang`,
+          formattedHQ: `${hq?.byEmploymentStandard?.pkwtt || 0} Orang`,
+          formattedStore: `${store?.byEmploymentStandard?.pkwtt || 0} Orang`,
+          status: 'optimal',
+          statusLabel: 'Terdata',
+        };
+      }
+      if (m.no === 19 && corp.byEmploymentStandard) {
+        return {
+          ...m,
+          totalCorporate: corp.byEmploymentStandard.pkwt || 0,
+          hq: hq?.byEmploymentStandard?.pkwt || 0,
+          store: store?.byEmploymentStandard?.pkwt || 0,
+          formattedCorporate: `${corp.byEmploymentStandard.pkwt || 0} Orang`,
+          formattedHQ: `${hq?.byEmploymentStandard?.pkwt || 0} Orang`,
+          formattedStore: `${store?.byEmploymentStandard?.pkwt || 0} Orang`,
+          status: 'optimal',
+          statusLabel: 'Terdata',
+        };
+      }
+      if (m.no === 20 && corp.byEmploymentStandard) {
+        return {
+          ...m,
+          totalCorporate: corp.byEmploymentStandard.partTime || 0,
+          hq: hq?.byEmploymentStandard?.partTime || 0,
+          store: store?.byEmploymentStandard?.partTime || 0,
+          formattedCorporate: `${corp.byEmploymentStandard.partTime || 0} Orang`,
+          formattedHQ: `${hq?.byEmploymentStandard?.partTime || 0} Orang`,
+          formattedStore: `${store?.byEmploymentStandard?.partTime || 0} Orang`,
+          status: 'optimal',
+          statusLabel: 'Terdata',
+        };
+      }
+      if (m.no === 21 && corp.byEmploymentStandard) {
+        return {
+          ...m,
+          totalCorporate: corp.byEmploymentStandard.internship || 0,
+          hq: hq?.byEmploymentStandard?.internship || 0,
+          store: store?.byEmploymentStandard?.internship || 0,
+          formattedCorporate: `${corp.byEmploymentStandard.internship || 0} Orang`,
+          formattedHQ: `${hq?.byEmploymentStandard?.internship || 0} Orang`,
+          formattedStore: `${store?.byEmploymentStandard?.internship || 0} Orang`,
+          status: 'optimal',
+          statusLabel: 'Terdata',
+        };
+      }
+      if (m.no === 27) {
+        const totalSp = apiSp?.totalSpIssued || 0;
+        const hSp = apiSp?.hqSp?.total || 0;
+        const sSp = apiSp?.storeSp?.total || 0;
+        return {
+          ...m,
+          totalCorporate: totalSp,
+          hq: hSp,
+          store: sSp,
+          formattedCorporate: `${totalSp} SP`,
+          formattedHQ: `${hSp} SP`,
+          formattedStore: `${sSp} SP`,
+          status: totalSp > 0 ? 'normal' : 'neutral',
+          statusLabel: totalSp > 0 ? 'Terekam' : '-',
+        };
+      }
+      if (m.no === 28) {
+        const cCount = corp.headcount || apiDemo?.totalHeadcount || 0;
+        return {
+          ...m,
+          totalCorporate: cCount,
+          formattedCorporate: cCount > 0 ? `${cCount.toLocaleString()} FTE` : '-',
+          status: cCount > 0 ? 'optimal' : 'neutral',
+          statusLabel: cCount > 0 ? 'Tersedia' : '-',
+        };
+      }
+      if (m.no === 29) {
+        const actualCost = apiProd?.totalActualCost || 0;
+        const budgetCost = apiProd?.totalBudgetCost || 0;
+        return {
+          ...m,
+          totalCorporate: actualCost,
+          formattedCorporate: actualCost > 0 ? `Aktual Rp ${(actualCost / 1000000000).toFixed(2)}M / Budget Rp ${(budgetCost / 1000000000).toFixed(2)}M` : '-',
+          status: actualCost > 0 ? 'optimal' : 'neutral',
+          statusLabel: actualCost > 0 ? 'Sesuai Budget' : '-',
+        };
+      }
+      if (m.no === 31) {
+        const ratio = apiProd?.labourCostRatio;
+        return {
+          ...m,
+          totalCorporate: ratio ? parseFloat(ratio) : 0,
+          formattedCorporate: ratio ? `${parseFloat(ratio).toFixed(2)}%` : '-',
+          status: ratio ? 'optimal' : 'neutral',
+          statusLabel: ratio ? 'Optimal' : '-',
+        };
+      }
+      if (m.no === 32) {
+        const rev = apiProd?.revenuePerFte;
+        return {
+          ...m,
+          totalCorporate: rev ? parseFloat(rev) : 0,
+          formattedCorporate: rev && parseFloat(rev) > 0 ? `Rp ${(parseFloat(rev) / 1000000).toFixed(2)} Jt / FTE` : '-',
+          status: rev ? 'optimal' : 'neutral',
+          statusLabel: rev ? 'Optimal' : '-',
+        };
+      }
+      if (m.no === 33) {
+        const mult = apiProd?.payrollMultiplier;
+        return {
+          ...m,
+          totalCorporate: mult ? parseFloat(mult) : 0,
+          formattedCorporate: mult ? `${parseFloat(mult).toFixed(2)}x Multiplier` : '-',
+          status: mult ? 'optimal' : 'neutral',
+          statusLabel: mult ? 'Optimal' : '-',
+        };
+      }
+      if (m.no === 51) {
+        const dCorp = apiSp?.disputes?.corporate?.total || 0;
+        const dHq = apiSp?.disputes?.hq?.total || 0;
+        const dStore = apiSp?.disputes?.store?.total || 0;
+        return {
+          ...m,
+          totalCorporate: dCorp,
+          hq: dHq,
+          store: dStore,
+          formattedCorporate: dCorp > 0 ? `${dCorp} Isu Aktif` : '-',
+          formattedHQ: dHq > 0 ? `${dHq} Isu HQ` : '-',
+          formattedStore: dStore > 0 ? `${dStore} Isu Store` : '-',
+          status: dCorp > 0 ? 'normal' : 'neutral',
+          statusLabel: dCorp > 0 ? 'Terkendali' : '-',
+        };
+      }
+      return m;
+    });
+  }, [dashboardData]);
+
+  const filteredMetrics = computedMetrics
     .filter((m) => {
       const matchesCategory = selectedCategory === 'Semua' || m.category === selectedCategory;
       const matchesSearch =

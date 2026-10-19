@@ -1,16 +1,61 @@
-import React, { useState } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { User, Shield, Bell, Palette, Globe, Check } from "lucide-react"
+import { useCurrentUser, useUpdateProfile } from "../../hooks/use-auth"
 
 export const SettingsPage: React.FC = () => {
   const [section, setSection] = useState<
     "profile" | "security" | "app" | "notification" | "appearance"
   >("profile")
   const [saved, setSaved] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [name, setName] = useState("Muntazier")
+  const [email, setEmail] = useState("muntazier@biensi.co.id")
+  const [role, setRole] = useState("Admin HR Senior")
+  const [phoneNumber, setPhoneNumber] = useState("+62 22 7300-3333 (Ext Kantor Pusat 201)")
+  const [photoUrl, setPhotoUrl] = useState("https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&auto=format&fit=crop&q=80")
+
+  const { data: profile } = useCurrentUser()
+  const updateMutation = useUpdateProfile()
+
+  useEffect(() => {
+    if (profile) {
+      if (profile.name) setName(profile.name)
+      if (profile.email) setEmail(profile.email)
+      if (profile.role) setRole(profile.role)
+      if (profile.phoneNumber) setPhoneNumber(profile.phoneNumber)
+      if (profile.photoUrl) setPhotoUrl(profile.photoUrl)
+    }
+  }, [profile])
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault()
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    updateMutation.mutate(
+      { name, email, phoneNumber, photoUrl },
+      {
+        onSuccess: () => {
+          setSaved(true)
+          setTimeout(() => setSaved(false), 3000)
+        },
+      }
+    )
+  }
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const formData = new FormData()
+    formData.append('photo', file)
+    formData.append('name', name)
+    formData.append('email', email)
+    formData.append('phoneNumber', phoneNumber)
+    updateMutation.mutate(formData, {
+      onSuccess: (updated) => {
+        if (updated?.photoUrl) setPhotoUrl(updated.photoUrl)
+        setSaved(true)
+        setTimeout(() => setSaved(false), 3000)
+      },
+    })
   }
 
   return (
@@ -61,15 +106,23 @@ export const SettingsPage: React.FC = () => {
                 Profil Administrator
               </h3>
               <div className="flex items-center gap-4">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/png,image/jpeg,image/gif"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
                 <img
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&auto=format&fit=crop&q=80"
+                  src={photoUrl}
                   alt="Avatar"
                   className="w-16 h-16 rounded-2xl object-cover ring-2 ring-red-500/20"
                 />
                 <div>
                   <button
                     type="button"
-                    className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 hover:bg-slate-50"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-1.5 text-xs font-bold rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer"
                   >
                     Ganti Foto Profil
                   </button>
@@ -86,7 +139,8 @@ export const SettingsPage: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    defaultValue="Muntazier"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden"
                   />
                 </div>
@@ -96,7 +150,8 @@ export const SettingsPage: React.FC = () => {
                   </label>
                   <input
                     type="email"
-                    defaultValue="muntazier@biensi.co.id"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden"
                   />
                 </div>
@@ -106,7 +161,7 @@ export const SettingsPage: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    defaultValue="Admin HR Senior"
+                    value={role}
                     readOnly
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-slate-500"
                   />
@@ -117,7 +172,8 @@ export const SettingsPage: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    defaultValue="+62 22 7300-3333 (Ext Kantor Pusat 201)"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-hidden"
                   />
                 </div>
@@ -126,9 +182,10 @@ export const SettingsPage: React.FC = () => {
               <div className="pt-4 border-t border-slate-100 flex justify-end">
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold text-white bg-[#c8102e] hover:bg-red-700 rounded-xl shadow-xs"
+                  disabled={updateMutation.isPending}
+                  className="px-5 py-2 text-xs font-bold text-white bg-[#c8102e] hover:bg-red-700 rounded-xl shadow-xs cursor-pointer disabled:opacity-50"
                 >
-                  Simpan Perubahan Profil
+                  {updateMutation.isPending ? "Menyimpan..." : "Simpan Perubahan Profil"}
                 </button>
               </div>
             </form>
