@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react"
-import { User, Shield, Bell, Palette, Globe, Check } from "lucide-react"
+import { User, Check } from "lucide-react"
 import { useCurrentUser, useUpdateProfile } from "../../hooks/use-auth"
 
 export const SettingsPage: React.FC = () => {
@@ -80,17 +80,13 @@ export const SettingsPage: React.FC = () => {
         <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-1 text-xs font-bold">
           {[
             { id: "profile", label: "Profil Admin", icon: User },
-            { id: "security", label: "Keamanan & 2FA", icon: Shield },
-            { id: "app", label: "Parameter Sistem HR", icon: Globe },
-            { id: "notification", label: "Pemicu Notifikasi", icon: Bell },
-            { id: "appearance", label: "Tema & Identitas Brand", icon: Palette },
           ].map((item) => (
             <button
               key={item.id}
               onClick={() => setSection(item.id as "profile" | "security" | "app" | "notification" | "appearance")}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${section === item.id
-                  ? "bg-slate-900 text-white shadow-xs"
-                  : "text-slate-600 hover:bg-slate-100"
+                ? "bg-slate-900 text-white shadow-xs"
+                : "text-slate-600 hover:bg-slate-100"
                 }`}
             >
               <item.icon className="w-4 h-4" />

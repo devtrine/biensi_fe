@@ -835,7 +835,7 @@ export const phase1Metrics: Phase1Metric[] = [
     store: 0,
     unit: 'number',
     formattedCorporate: '-',
-    formattedHQ: '-',
+    formattedHQ: '-', 
     formattedStore: '-',
     status: 'neutral',
     statusLabel: '-'
