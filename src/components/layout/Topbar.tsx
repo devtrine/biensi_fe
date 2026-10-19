@@ -48,7 +48,7 @@ export const Topbar: React.FC<TopbarProps> = ({
         <div className="relative max-w-md w-full hidden sm:block">
           <button
             type="button"
-            onClick={onOpenSearch}
+            // onClick={onOpenSearch}
             className="w-full flex items-center justify-between px-3.5 py-2 text-sm text-slate-400 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-left transition-colors"
           >
             <div className="flex items-center gap-2.5">
