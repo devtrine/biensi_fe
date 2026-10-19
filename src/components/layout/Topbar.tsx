@@ -108,9 +108,6 @@ export const Topbar: React.FC<TopbarProps> = ({
                 <p className="text-xs text-slate-500">
                   {profile?.email || "budi.santoso@biensi.co.id"}
                 </p>
-                <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Terhubung Live Engine
-                </span>
               </div>
               <div className="py-1">
                 <Link
