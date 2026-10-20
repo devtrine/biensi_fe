@@ -4,8 +4,7 @@ import {
   Search,
   HelpCircle,
   ChevronDown,
-  CheckCircle2,
-  User,
+    User,
   LogOut,
   Settings as SettingsIcon,
 } from "lucide-react"
