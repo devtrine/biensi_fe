@@ -357,7 +357,7 @@ export const ImportPage: React.FC = () => {
           {importResult.results && importResult.results.length > 0 && (
             <div className="space-y-2">
               <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                Rincian Status Modul Backend:
+                Rincian Status:
               </span>
               <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 text-xs overflow-hidden">
                 {importResult.results.map((res, idx) => (
@@ -375,9 +375,6 @@ export const ImportPage: React.FC = () => {
                       <div>
                         <span className="font-bold text-slate-900">
                           {res.moduleLabel}
-                        </span>
-                        <span className="text-slate-400 font-mono text-[11px] ml-2">
-                          ({res.endpoint})
                         </span>
                         <p className="text-[11px] text-slate-500 mt-0.5">
                           {res.message}
@@ -404,8 +401,8 @@ export const ImportPage: React.FC = () => {
               onClick={() => navigate("/dashboard")}
               className="w-full sm:w-auto px-6 py-2.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
-              <span>Buka Dashboard Utama</span>
-              <ArrowRight className="w-4 h-4" />
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back</span>
             </button>
             <button
               onClick={handleReset}
