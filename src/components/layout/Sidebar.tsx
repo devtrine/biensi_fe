@@ -51,9 +51,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
     if (itemPath === '/setting') {
       return current === '/setting' || current === '/settings';
     }
-    if (itemPath === '/about') {
-      return current === '/about';
-    }
 
     return current === itemPath;
   };
@@ -86,7 +83,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
       title: 'SETTING & INFORMASI',
       items: [
         { name: 'Setting', path: '/setting', icon: Settings },
-        { name: 'Tentang Aplikasi', path: '/about', icon: Compass },
+        // { name: 'Tentang Aplikasi', path: '/about', icon: Compass },
       ]
     }
   ];

@@ -6,7 +6,6 @@ import { DashboardLayout } from '../pages/dashboard/dashboard-layout'
 import { DashboardPage } from '../pages/dashboard/DashboardPage'
 import { ImportPage } from '../pages/import/ImportPage'
 import { SettingsPage } from '../pages/settings/SettingsPage'
-import { AboutPage } from '../pages/about/AboutPage'
 import { NotFoundPage } from '../pages/not-found-page'
 import { RequireAuth } from '../components/auth/require-auth'
 
@@ -29,7 +28,6 @@ export const AppRoutes: React.FC = () => {
         <Route path="/import" element={<ImportPage />} />
         <Route path="/setting" element={<SettingsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/about" element={<AboutPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />
