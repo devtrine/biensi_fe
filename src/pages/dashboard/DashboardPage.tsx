@@ -161,12 +161,9 @@ export const DashboardPage: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-heading">
               HR EXECUTIVE DASHBOARD
             </h1>
-            <span className="px-2.5 py-0.5 text-xs font-bold bg-red-100 text-red-700 rounded-full border border-red-200">
-              KPI 2026
-            </span>
           </div>
           <p className="text-sm sm:text-base text-slate-600 mt-1 max-w-3xl leading-relaxed">
-            <strong className="text-slate-900 font-semibold">Pelaporan Bulanan (Monthly Reporting)</strong> PT Biensi Fesyenindo secara terpadu nasional.
+            <strong className="text-slate-900 font-semibold">Pelaporan Bulanan (Monthly Reporting)</strong> PT Biensi Fesyenindo.
           </p>
         </div>
 
