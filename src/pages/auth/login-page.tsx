@@ -91,6 +91,7 @@ export const LoginPage: React.FC = () => {
                   alt="Biensi Icon"
                   className="h-16 w-auto mb-10 object-contain shrink-0"
                 />
+                {/* ini teks untuk samping logo */}
                 {/* <img
                 src="/BiensiType.webp"
                 alt="BIENSI"
@@ -105,7 +106,6 @@ export const LoginPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Feedback Alerts */}
             {errorMessage && (
               <div className="w-full mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2.5 animate-in fade-in duration-200">
                 <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
@@ -120,9 +120,7 @@ export const LoginPage: React.FC = () => {
               </div>
             )}
 
-            {/* Inputs & Actions */}
             <form onSubmit={handleSubmit} className="w-full flex flex-col space-y-3.5">
-              {/* Email Input with Red CircleUserRound Icon */}
               <div>
                 <div className="w-full h-11.5 bg-white rounded-xl border border-slate-200 hover:border-slate-300 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-500/15 px-3.5 flex items-center gap-3 transition-all shadow-xs">
                   <CircleUserRound
@@ -140,7 +138,6 @@ export const LoginPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Password Input with Red Lock Icon & Eye Toggle */}
               <div>
                 <div className="w-full h-11.5 bg-white rounded-xl border border-slate-200 hover:border-slate-300 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-500/15 px-3.5 flex items-center gap-3 transition-all shadow-xs">
                   <div className="w-5 flex items-center justify-center shrink-0">
@@ -177,7 +174,6 @@ export const LoginPage: React.FC = () => {
                 disabled={loginMutation.isPending}
                 className="relative overflow-hidden w-full h-11.5 !mt-3.5 bg-[#E02618] hover:bg-[#C91A0D] active:scale-[0.99] text-white font-semibold text-sm rounded-xl flex items-center justify-center transition-all shadow-[0_8px_20px_rgba(224,38,24,0.3)] hover:shadow-[0_12px_28px_rgba(224,38,24,0.45)] hover:-translate-y-0.5 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed select-none"
               >
-                {/* Subtle Shimmer Sweep */}
                 <div className="pointer-events-none absolute inset-0 -top-full -bottom-full w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12 animate-shimmer" />
 
                 {loginMutation.isPending ? (
