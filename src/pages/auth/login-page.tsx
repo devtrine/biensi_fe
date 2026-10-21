@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  CircleUserRound,
+  Lock,
   Eye,
   EyeOff,
   AlertCircle,
@@ -118,35 +120,47 @@ export const LoginPage: React.FC = () => {
               </div>
             )}
 
-            {/* Inputs & Actions matching reference design */}
+            {/* Inputs & Actions */}
             <form onSubmit={handleSubmit} className="w-full flex flex-col space-y-3.5">
-              {/* Email Input: Clean White Input with Border */}
+              {/* Email Input with Red CircleUserRound Icon */}
               <div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email"
-                  autoComplete="email"
-                  className="w-full h-11.5 bg-white rounded-xl border border-slate-200 hover:border-slate-300 focus:border-red-500 focus:ring-2 focus:ring-red-500/15 px-4 text-sm text-slate-800 placeholder:text-slate-400 font-normal outline-none transition-all shadow-xs"
-                />
+                <div className="w-full h-11.5 bg-white rounded-xl border border-slate-200 hover:border-slate-300 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-500/15 px-3.5 flex items-center gap-3 transition-all shadow-xs">
+                  <CircleUserRound
+                    className="w-5 h-5 text-[#D61F11] shrink-0"
+                    strokeWidth={1.8}
+                  />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Email"
+                    autoComplete="email"
+                    className="w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-400 font-normal outline-none border-none p-0"
+                  />
+                </div>
               </div>
 
-              {/* Password Input: Clean White Input with Border & Eye Toggle */}
+              {/* Password Input with Red Lock Icon & Eye Toggle */}
               <div>
-                <div className="relative flex items-center">
+                <div className="w-full h-11.5 bg-white rounded-xl border border-slate-200 hover:border-slate-300 focus-within:border-red-500 focus-within:ring-2 focus-within:ring-red-500/15 px-3.5 flex items-center gap-3 transition-all shadow-xs">
+                  <div className="w-5 flex items-center justify-center shrink-0">
+                    <Lock
+                      className="w-[18px] h-[19px] text-[#D61F11]"
+                      strokeWidth={1.8}
+                    />
+                  </div>
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Password"
                     autoComplete="current-password"
-                    className="w-full h-11.5 bg-white rounded-xl border border-slate-200 hover:border-slate-300 focus:border-red-500 focus:ring-2 focus:ring-red-500/15 pl-4 pr-11 text-sm text-slate-800 placeholder:text-slate-400 font-normal outline-none transition-all shadow-xs"
+                    className="w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-400 font-normal outline-none border-none p-0"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 text-slate-400 hover:text-slate-600 transition-colors p-1 cursor-pointer focus:outline-none"
+                    className="text-slate-400 hover:text-slate-600 transition-colors p-1 cursor-pointer focus:outline-none shrink-0"
                     title={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
