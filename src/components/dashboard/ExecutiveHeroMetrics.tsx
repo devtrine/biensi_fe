@@ -55,9 +55,11 @@ export const ExecutiveHeroMetrics: React.FC<ExecutiveHeroMetricsProps> = ({
   const cmtRatio = apiProd?.cmtRatio || 'Ratio 0 : 0';
   const cmtRatioDecimal = apiProd?.cmtRatioDecimal ? `(${apiProd.cmtRatioDecimal})` : '(0.00)';
   const cmtTargetStatus = apiProd?.cmtTargetAchieved ? 'Target Tercapai' : 'Target Evaluasi';
-  const cmtEfficiencyText = apiProd?.cmtEfficiency != null ? `vs tahun lalu: ${apiProd.cmtEfficiency >= 0 ? '+' : ''}${apiProd.cmtEfficiency}% Efisiensi CMT` : '0% Efisiensi CMT';
-  const cmtFteDisplay = apiProd?.cmtFte ? `${apiProd.cmtFte} FTE` : '0 FTE';
-  const onTimeOutputDisplay = apiProd?.onTimeOutput != null ? `${apiProd.onTimeOutput}%` : '0%';
+  const cmtEfficiencyText = apiProd?.cmtEfficiency != null
+    ? `vs tahun lalu: ${apiProd.cmtEfficiency >= 0 ? '+' : ''}${apiProd.cmtEfficiency}% Efisiensi CMT`
+    : 'vs tahun lalu: -';
+  const cmtFteDisplay = apiProd?.cmtFte != null ? `${apiProd.cmtFte} FTE` : '0 FTE';
+  const onTimeOutputDisplay = apiProd?.onTimeOutput != null ? `${apiProd.onTimeOutput}%` : '0.0%';
 
   const hqPct = totalCount > 0 ? ((hqCount / totalCount) * 100).toFixed(1) : '0';
   const storePct = totalCount > 0 ? ((storeCount / totalCount) * 100).toFixed(1) : '0';
@@ -206,13 +208,13 @@ export const ExecutiveHeroMetrics: React.FC<ExecutiveHeroMetricsProps> = ({
           <div className="bg-slate-900/60 px-3 py-2 rounded-xl border border-slate-800/50">
             <span className="text-xs font-semibold text-slate-400 block uppercase tracking-wider mb-0.5">TENAGA KERJA CMT</span>
             <span className="text-base font-bold font-mono text-white tabular-nums">
-              {cmtFteDisplay} <span className="text-xs text-slate-400 font-normal">(QA & Aplikasi)</span>
+              {cmtFteDisplay}
             </span>
           </div>
           <div className="bg-slate-900/60 px-3 py-2 rounded-xl border border-slate-800/50">
             <span className="text-xs font-semibold text-slate-400 block uppercase tracking-wider mb-0.5">ON-TIME OUTPUT</span>
             <span className="text-base font-bold font-mono text-purple-300 tabular-nums">
-              {onTimeOutputDisplay} <span className="text-xs text-slate-400 font-normal">Garment</span>
+              {onTimeOutputDisplay}
             </span>
           </div>
         </div>

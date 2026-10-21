@@ -140,7 +140,7 @@ export const ImportPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => downloadExcelTemplate(selectedModuleKey)}
+            onClick={() => downloadExcelTemplate("auto")}
             className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-2xs cursor-pointer transition-colors"
             title={`Unduh template Excel resmi untuk ${currentModule.label}`}
           >
@@ -462,3 +462,4 @@ export const ImportPage: React.FC = () => {
     </div>
   )
 }
+

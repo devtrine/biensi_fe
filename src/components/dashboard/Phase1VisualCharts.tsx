@@ -211,11 +211,16 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
   const genderLakiPct = genderTotal > 0 ? Math.round((genderLaki / genderTotal) * 100) : 0;
   const genderPerempuanPct = genderTotal > 0 ? Math.round((genderPerempuan / genderTotal) * 100) : 0;
 
-  const totalSpCount = apiSp?.totalSpIssued || 0;
   const storeSpCount = apiSp?.storeSp?.total || 0;
   const hqSpCount = apiSp?.hqSp?.total || 0;
-  const ttCount = (apiSp?.storeSp?.tataTertib || 0) + (apiSp?.hqSp?.tataTertib || 0);
-  const nonTtCount = (apiSp?.storeSp?.nonTataTertib || 0) + (apiSp?.hqSp?.nonTataTertib || 0);
+  const totalSpCount =
+    apiSp?.totalSpIssued != null
+      ? apiSp.totalSpIssued
+      : storeSpCount + hqSpCount;
+  const ttCount =
+    (apiSp?.storeSp?.tataTertib || 0) + (apiSp?.hqSp?.tataTertib || 0);
+  const nonTtCount =
+    (apiSp?.storeSp?.nonTataTertib || 0) + (apiSp?.hqSp?.nonTataTertib || 0);
   const disputesSelesai = apiSp?.disputes?.corporate?.selesai || 0;
   const disputesBipartit = apiSp?.disputes?.corporate?.bipartit || 0;
   const disputesMediasi = apiSp?.disputes?.corporate?.mediasi || 0;
@@ -556,16 +561,24 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
     ? `Total Sales Rp ${(apiProd.totalSales / 1000000000).toFixed(1)}M`
     : 'Rp 0';
 
-  const recruitmentFulfilled = dashboardData?.recruitment?.fulfilled || 0;
-  const recruitmentTarget = dashboardData?.recruitment?.target || 0;
-  const recruitmentPct = recruitmentTarget > 0 ? ((recruitmentFulfilled / recruitmentTarget) * 100).toFixed(1) : '0';
+  const recruitmentFulfilled = dashboardData?.recruitment?.fulfilled ?? 0;
+  const recruitmentTarget = dashboardData?.recruitment?.target ?? 0;
+  const recruitmentPct =
+    recruitmentTarget > 0
+      ? ((recruitmentFulfilled / recruitmentTarget) * 100).toFixed(1)
+      : '0.0';
 
-  const kpiCompleted = dashboardData?.kpi?.completed || 0;
-  const kpiTotal = dashboardData?.kpi?.total || 0;
-  const kpiPct = kpiTotal > 0 ? ((kpiCompleted / kpiTotal) * 100).toFixed(1) : '0';
+  const kpiCompleted = dashboardData?.kpi?.completed ?? 0;
+  const kpiTotal = dashboardData?.kpi?.total ?? 0;
+  const kpiPct =
+    kpiTotal > 0 ? ((kpiCompleted / kpiTotal) * 100).toFixed(1) : '0.0';
 
-  const avgTimeToHire = dashboardData?.recruitment?.avgTimeToHire ? `${dashboardData.recruitment.avgTimeToHire} Hari` : '0 Hari';
-  const costPerHire = dashboardData?.recruitment?.costPerHire ? `Rp ${(dashboardData.recruitment.costPerHire / 1000000).toFixed(2)}M` : 'Rp 0';
+  const avgTimeToHire = dashboardData?.recruitment?.avgTimeToHire != null
+    ? `${dashboardData.recruitment.avgTimeToHire} Hari`
+    : '-';
+  const costPerHire = dashboardData?.recruitment?.costPerHire != null
+    ? `Rp ${dashboardData.recruitment.costPerHire.toLocaleString()}`
+    : '-';
 
   return (
     <div className="space-y-6">
@@ -993,7 +1006,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
           </div>
 
           <div className="pt-3.5 mt-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium">
-            <span>Avg Time to Hire: <strong className="text-slate-800 font-mono">{avgTimeToHire}</strong> (&lt; 21 Hari)</span>
+            <span>Avg Time to Hire: <strong className="text-slate-800 font-mono">{avgTimeToHire}</strong> {avgTimeToHire !== '-' ? '(< 21 Hari)' : ''}</span>
             <span>Cost/Hire: <strong className="text-slate-800 font-mono">{costPerHire}</strong></span>
           </div>
         </div>
