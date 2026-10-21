@@ -11,14 +11,15 @@ export interface ImportModuleOption {
 }
 
 export const IMPORT_MODULES: ImportModuleOption[] = [
-  {
-    key: "auto",
-    label: "Sinkronisasi Penuh (Rekomendasi)",
-    description: "Unggah berkas induk HR_Monitoring_Dashboard v2.0 ke semua endpoint backend terkait secara otomatis.",
-    endpoint: "all",
-    category: "Semua Data",
-    iconName: "Sparkles",
-  },
+  // tahan dulu
+  // {
+  //   key: "auto",
+  //   label: "Sinkronisasi Penuh (Rekomendasi)",
+  //   description: "Unggah berkas induk HR_Monitoring_Dashboard v2.0 ke semua endpoint backend terkait secara otomatis.",
+  //   endpoint: "all",
+  //   category: "Semua Data",
+  //   iconName: "Sparkles",
+  // },
   {
     key: "employees",
     label: "Master Karyawan (HO & Toko)",

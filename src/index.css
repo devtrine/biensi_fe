@@ -114,3 +114,81 @@ html, body {
   background: #262b40;
   border-radius: 9999px;
 }
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.88;
+    filter: drop-shadow(0 0 25px rgba(214, 31, 17, 0.45));
+    transform: translate(-380px, -360px) rotate(32.5deg) scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 60px rgba(214, 31, 17, 0.8));
+    transform: translate(-375px, -355px) rotate(33deg) scale(0.98);
+  }
+}
+
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes floatOrb {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translate(25px, -20px) scale(1.12);
+    opacity: 0.6;
+  }
+}
+
+@keyframes entranceFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes shimmerBtn {
+  0% {
+    transform: translateX(-150%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+.animate-glow-pulse {
+  animation: pulseGlow 6s ease-in-out infinite;
+}
+
+.animate-entrance {
+  animation: entranceFadeUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-float {
+  animation: floatGentle 5s ease-in-out infinite;
+}
+
+.animate-orb-1 {
+  animation: floatOrb 8s ease-in-out infinite;
+}
+
+.animate-orb-2 {
+  animation: floatOrb 10s ease-in-out infinite reverse;
+}
+
+.animate-shimmer {
+  animation: shimmerBtn 3.5s ease-in-out infinite;
+}
+
