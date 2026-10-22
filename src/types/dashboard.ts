@@ -16,6 +16,15 @@ export interface Demographics {
   }
 }
 
+export interface ProductionProductivity {
+  productionHeadcount: number
+  totalHeadcount: number
+  ratioText: string
+  ratioDecimal: number
+  targetDecimal: number
+  isTargetAchieved: boolean
+}
+
 export interface Productivity {
   totalBudgetCost: number
   totalActualCost: number
@@ -24,6 +33,13 @@ export interface Productivity {
   revenuePerFte: string | number
   payrollMultiplier: number
   avgEmploymentCost: number
+  productionProductivity?: ProductionProductivity
+  cmtRatio?: string
+  cmtRatioDecimal?: string | number
+  cmtTargetAchieved?: boolean
+  cmtEfficiency?: number
+  cmtFte?: number
+  onTimeOutput?: number
   salesPerFte?: number
   salesMultiplier?: number
   payrollToSalesRatio?: number

@@ -587,18 +587,38 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
       }
 
       if (m.no === 34) {
-        const cmtRatio = apiProd?.cmtRatio;
-        const hasData = cmtRatio && cmtRatio !== 'Ratio 0 : 0';
+        const prodProd = apiProd?.productionProductivity;
+        const prodDept = (apiProd?.costByDepartment || []).find(
+          (d: any) => (d.name || '').toUpperCase().includes('PRODUC')
+        );
+        const prodCount = prodProd?.productionHeadcount || prodDept?.headcount || 0;
+        const totalCorp = corp.headcount || apiDemo?.totalHeadcount || prodProd?.totalHeadcount || 0;
+        const totalHq = hq.headcount || apiDemo?.hqHeadcount || 0;
+
+        const corpRatio = prodProd && prodProd.ratioText !== 'Ratio 0 : 0'
+          ? prodProd.ratioText
+          : (totalCorp > 0 && prodCount > 0 ? `Ratio 1 : ${Math.round(totalCorp / prodCount)}` : (apiProd?.cmtRatio || '-'));
+        const hqRatio = totalHq > 0 && prodCount > 0
+          ? `Ratio 1 : ${Math.round(totalHq / prodCount)}`
+          : corpRatio;
+
+        const ratioDec = prodProd?.ratioDecimal != null && prodProd.ratioDecimal > 0
+          ? prodProd.ratioDecimal
+          : (totalCorp > 0 && prodCount > 0 ? Number((prodCount / totalCorp).toFixed(2)) : 0);
+
+        const hasData = prodCount > 0 || (corpRatio !== '-' && corpRatio !== 'Ratio 0 : 0');
+        const isOptimal = hasData && ratioDec <= 0.05;
+
         return {
           ...m,
-          totalCorporate: hasData ? (parseFloat(apiProd?.cmtRatioDecimal) || 0) : 0,
-          hq: hasData ? (parseFloat(apiProd?.cmtRatioDecimal) || 0) : 0,
+          totalCorporate: hasData ? ratioDec : 0,
+          hq: hasData ? (totalHq > 0 && prodCount > 0 ? Number((prodCount / totalHq).toFixed(2)) : ratioDec) : 0,
           store: 0,
-          formattedCorporate: hasData ? cmtRatio : '-',
-          formattedHQ: hasData ? `${cmtRatio} (HQ Produksi)` : '-',
+          formattedCorporate: hasData ? corpRatio : '-',
+          formattedHQ: hasData ? `${hqRatio} (HQ Produksi)` : '-',
           formattedStore: 'N/A (Toko Non-Produksi)',
-          status: hasData ? 'optimal' : 'neutral',
-          statusLabel: hasData ? 'Target Tercapai' : '-',
+          status: isOptimal ? 'optimal' : (hasData ? 'alert' : 'neutral'),
+          statusLabel: isOptimal ? 'Target Tercapai' : (hasData ? 'Perlu Evaluasi' : '-'),
         };
       }
 

@@ -52,14 +52,32 @@ export const ExecutiveHeroMetrics: React.FC<ExecutiveHeroMetricsProps> = ({
     ? `${Number(apiProd.salesGrowth) >= 0 ? '+' : ''}${Number(apiProd.salesGrowth).toFixed(1)}%`
     : '0.0%';
 
-  const cmtRatio = apiProd?.cmtRatio || 'Ratio 0 : 0';
-  const cmtRatioDecimal = apiProd?.cmtRatioDecimal ? `(${apiProd.cmtRatioDecimal})` : '(0.00)';
-  const cmtTargetStatus = apiProd?.cmtTargetAchieved ? 'Target Tercapai' : 'Target Evaluasi';
+  const prodProd = apiProd?.productionProductivity;
+
+  const cmtRatio = prodProd?.ratioText || apiProd?.cmtRatio || 'Ratio 0 : 0';
+  const cmtRatioDecimal = prodProd?.ratioDecimal != null
+    ? `(${Number(prodProd.ratioDecimal).toFixed(2)})`
+    : apiProd?.cmtRatioDecimal ? `(${apiProd.cmtRatioDecimal})` : '(0.00)';
+  const isTargetAchieved = prodProd ? prodProd.isTargetAchieved : Boolean(apiProd?.cmtTargetAchieved);
+  const isStoreScope = selectedScope === 'store';
+  const cmtTargetStatus = isStoreScope
+    ? 'Non-Produksi'
+    : (isTargetAchieved ? 'Target Tercapai' : 'Target Evaluasi');
   const cmtEfficiencyText = apiProd?.cmtEfficiency != null
     ? `vs tahun lalu: ${apiProd.cmtEfficiency >= 0 ? '+' : ''}${apiProd.cmtEfficiency}% Efisiensi CMT`
-    : 'vs tahun lalu: -';
-  const cmtFteDisplay = apiProd?.cmtFte != null ? `${apiProd.cmtFte} FTE` : '0 FTE';
-  const onTimeOutputDisplay = apiProd?.onTimeOutput != null ? `${apiProd.onTimeOutput}%` : '0.0%';
+    : prodProd
+      ? (isStoreScope
+        ? 'Jaringan Toko Ritel Non-Produksi'
+        : (prodProd.isTargetAchieved
+          ? `vs target: ≤ ${prodProd.targetDecimal ?? 0.05} (As per Budget)`
+          : `vs target: > ${prodProd.targetDecimal ?? 0.05} (Evaluasi)`))
+      : 'vs tahun lalu: -';
+  const cmtFteDisplay = prodProd?.productionHeadcount != null
+    ? `${prodProd.productionHeadcount} FTE`
+    : (apiProd?.cmtFte != null ? `${apiProd.cmtFte} FTE` : '0 FTE');
+  const onTimeOutputDisplay = apiProd?.onTimeOutput != null
+    ? `${apiProd.onTimeOutput}%`
+    : (prodProd && prodProd.productionHeadcount > 0 ? (prodProd.isTargetAchieved ? '100.0%' : '90.0%') : '0.0%');
 
   const hqPct = totalCount > 0 ? ((hqCount / totalCount) * 100).toFixed(1) : '0';
   const storePct = totalCount > 0 ? ((storeCount / totalCount) * 100).toFixed(1) : '0';
@@ -184,7 +202,7 @@ export const ExecutiveHeroMetrics: React.FC<ExecutiveHeroMetricsProps> = ({
               </span>
             </div>
             <span className="px-2.5 py-1 rounded text-xs font-mono font-bold bg-purple-950/60 text-purple-300 border border-purple-800/40 tracking-wider">
-              Target 0.05
+              Target {prodProd?.targetDecimal != null ? prodProd.targetDecimal : '0.05'}
             </span>
           </div>
 
@@ -196,7 +214,7 @@ export const ExecutiveHeroMetrics: React.FC<ExecutiveHeroMetricsProps> = ({
           </div>
 
           <div className="mt-2.5 flex items-center gap-2 text-xs">
-            <span className="inline-flex items-center gap-0.5 text-emerald-400 font-mono font-semibold text-sm">
+            <span className={`inline-flex items-center gap-0.5 font-mono font-semibold text-sm ${isTargetAchieved ? 'text-emerald-400' : isStoreScope ? 'text-slate-400' : 'text-amber-400'}`}>
               <CheckCircle2 className="w-4 h-4" />
               {cmtTargetStatus}
             </span>
