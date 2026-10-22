@@ -82,28 +82,21 @@ export const LoginPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="w-full lg:w-[50%] xl:w-[48%] bg-white flex flex-col justify-between px-6 sm:px-10 lg:px-14 py-7 sm:py-9">
+        <div className="w-full lg:w-[50%] xl:w-[48%] bg-[#f8fafc] flex flex-col justify-between px-6 sm:px-10 lg:px-14 py-7 sm:py-9">
           <div className="my-auto py-6 sm:py-8 max-w-[390px] w-full mx-auto">
             <div className="text-center mb-7">
-              <div className="flex items-center gap-2.5 select-none justify-center">
+              <div className="flex items-between gap-2.5 select-none justify-center">
                 <img
                   src="/BiensiIcon.webp"
                   alt="Biensi Icon"
-                  className="h-16 w-auto mb-10 object-contain shrink-0"
+                  className="h-7 w-auto mb-10 object-contain shrink-0"
                 />
-                {/* ini teks untuk samping logo */}
-                {/* <img
-                src="/BiensiType.webp"
+                <img
+                src="/BIENSI.svg"
                 alt="BIENSI"
-                className="h-3.5 w-auto object-contain shrink-0"
-              /> */}
+                className="h-7 w-auto object-contain shrink-0"
+              />
               </div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-                Hi
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500 mt-2 font-normal">
-                Welcome to BIENSI
-              </p>
             </div>
 
             {errorMessage && (
