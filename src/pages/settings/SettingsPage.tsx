@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from "react"
-import { User, Check } from "lucide-react"
+import { User } from "lucide-react"
+import { message } from "antd"
 import { useCurrentUser, useUpdateProfile } from "../../hooks/use-auth"
 
 export const SettingsPage: React.FC = () => {
   const [section, setSection] = useState<
     "profile" | "security" | "app" | "notification" | "appearance"
   >("profile")
-  const [saved, setSaved] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [messageApi, contextHolder] = message.useMessage()
 
   const [name, setName] = useState("Muntazier")
   const [email, setEmail] = useState("muntazier@biensi.co.id")
@@ -34,8 +35,20 @@ export const SettingsPage: React.FC = () => {
       { name, email, phoneNumber, photoUrl },
       {
         onSuccess: () => {
-          setSaved(true)
-          setTimeout(() => setSaved(false), 3000)
+          messageApi.success({
+            content: "Profil administrator berhasil disimpan!",
+            duration: 3,
+          })
+        },
+        onError: (err: any) => {
+          const msg =
+            err?.response?.data?.message ||
+            err?.message ||
+            "Gagal menyimpan perubahan profil."
+          messageApi.error({
+            content: msg,
+            duration: 3,
+          })
         },
       }
     )
@@ -52,20 +65,27 @@ export const SettingsPage: React.FC = () => {
     updateMutation.mutate(formData, {
       onSuccess: (updated) => {
         if (updated?.photoUrl) setPhotoUrl(updated.photoUrl)
-        setSaved(true)
-        setTimeout(() => setSaved(false), 3000)
+        messageApi.success({
+          content: "Foto profil berhasil diperbarui!",
+          duration: 3,
+        })
+      },
+      onError: (err: any) => {
+        const msg =
+          err?.response?.data?.message ||
+          err?.message ||
+          "Gagal mengunggah foto profil."
+        messageApi.error({
+          content: msg,
+          duration: 3,
+        })
       },
     })
   }
 
   return (
     <div className="space-y-6">
-      {saved && (
-        <div className="p-3 bg-emerald-600 text-white text-xs font-semibold rounded-xl shadow-lg flex items-center gap-2">
-          <Check className="w-4 h-4" />
-          <span>Konfigurasi sistem berhasil disimpan!</span>
-        </div>
-      )}
+      {contextHolder}
 
       <div>
         <h1 className="text-2xl font-black text-slate-900 tracking-tight">
