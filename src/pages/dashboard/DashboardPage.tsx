@@ -344,7 +344,6 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 font-mono">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
           <span>
             Skop: <strong className="text-slate-900 uppercase">{selectedScope}</strong> • Periode: <strong className="text-slate-900">{selectedMonthLabel} {selectedYear}</strong>
           </span>
@@ -445,15 +444,15 @@ export const DashboardPage: React.FC = () => {
 
       {isLoading && (
         <div className="bg-white p-12 rounded-2xl border border-slate-200 shadow-2xs text-center space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-red-50 text-[#c8102e] mx-auto flex items-center justify-center">
-            <RefreshCw className="w-6 h-6 animate-spin text-[#c8102e]" />
+          <div className="w-12 h-12 rounded-2xl text-[#c8102e] mx-auto flex items-center justify-center">
+            <RefreshCw className="w-10 h-10 animate-spin text-[#c8102e]" />
           </div>
           <div className="space-y-1">
             <h3 className="text-base font-bold text-slate-900">
               Memuat Data Dashboard Eksekutif...
             </h3>
             <p className="text-xs text-slate-500">
-              Mengambil metrik KPI untuk periode {selectedMonthLabel} {selectedYear} dari backend.
+              Mengambil metrik KPI jika tersedia.
             </p>
           </div>
         </div>
@@ -461,27 +460,18 @@ export const DashboardPage: React.FC = () => {
 
       {!isLoading && (isError || !dashboardResponse) && (
         <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-2xs text-center space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 mx-auto flex items-center justify-center shadow-xs">
-            <AlertCircle className="w-7 h-7" />
+          <div className="w-14 h-auto rounded-2xl text-red-600 mx-auto flex items-center justify-center shadow-xs">
+            <AlertCircle className="w-10 h-10" />
           </div>
           <div className="space-y-1">
             <h3 className="text-lg font-black text-slate-900 font-heading">
-              Data Periode Belum Tersedia
+              Data Belum Tersedia
             </h3>
             <p className="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
-              Basis data belum memiliki rekapitulasi untuk periode <strong>{selectedMonthLabel} {selectedYear}</strong>. Silakan unggah berkas Excel atau pilih bulan yang telah memiliki data (Juli 2026).
+              silahkan import terlebih dahulu untuk menampilkan data
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <button
-              onClick={() => {
-                setSelectedYear("2026")
-                setSelectedMonth("7")
-              }}
-              className="px-4 py-2 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer transition-colors"
-            >
-              Tampilkan Bulan Juli 2026
-            </button>
             <button
               onClick={() => navigate("/import")}
               className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-[#c8102e] hover:bg-red-700 rounded-xl shadow-xs cursor-pointer transition-colors"
@@ -491,7 +481,7 @@ export const DashboardPage: React.FC = () => {
             </button>
             <button
               onClick={() => refetch()}
-              className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer transition-colors"
+              className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 border border-red-500/40 rounded-xl cursor-pointer transition-colors"
             >
               Coba Muat Ulang
             </button>
