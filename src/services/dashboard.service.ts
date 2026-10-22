@@ -15,17 +15,21 @@ export async function getDashboardSummary(
   scope: string = "Corporate",
   month?: string
 ): Promise<MainDashboardResponse | null> {
-  const params = new URLSearchParams()
-  if (year) params.append("year", year)
-  if (scope) params.append("scope", scope)
+  try {
+    const params = new URLSearchParams()
+    if (year) params.append("year", year)
+    if (scope) params.append("scope", scope)
 
-  const effectiveMonth = month || (year === "2026" ? "7" : undefined)
-  if (effectiveMonth) params.append("month", effectiveMonth)
+    const effectiveMonth = month || (year === "2026" ? "7" : undefined)
+    if (effectiveMonth) params.append("month", effectiveMonth)
 
-  const { data } = await api.get<ApiResponse<MainDashboardResponse>>(
-    `/dashboard/summary?${params.toString()}`
-  )
-  return data?.data || null
+    const { data } = await api.get<ApiResponse<MainDashboardResponse>>(
+      `/dashboard/summary?${params.toString()}`
+    )
+    return data?.data || null
+  } catch {
+    return null
+  }
 }
 
 export async function getReportingPeriods(): Promise<ReportingPeriodItem[]> {

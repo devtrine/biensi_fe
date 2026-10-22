@@ -11,7 +11,10 @@ export function useDashboardSummary(
   return useQuery({
     queryKey: ["dashboardSummary", year, normScope, month],
     queryFn: () => dashboardService.getDashboardSummary(year, normScope, month),
-    staleTime: 1000 * 60,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: false,
   })
 }
 
@@ -20,6 +23,8 @@ export function useReportingPeriods() {
     queryKey: ["reportingPeriods"],
     queryFn: dashboardService.getReportingPeriods,
     staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -28,6 +33,8 @@ export function useDivisions(search?: string) {
     queryKey: ["divisions", search],
     queryFn: () => orgService.getDivisions(search),
     staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -36,6 +43,8 @@ export function useDepartments(search?: string) {
     queryKey: ["departments", search],
     queryFn: () => orgService.getDepartments(search),
     staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }
 
@@ -44,5 +53,7 @@ export function useStores() {
     queryKey: ["stores"],
     queryFn: orgService.getStores,
     staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   })
 }

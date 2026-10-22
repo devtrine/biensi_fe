@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
+import { useQueryClient } from "@tanstack/react-query"
 import {
   BarChart2,
   Table as TableIcon,
@@ -57,6 +58,26 @@ export const DashboardPage: React.FC = () => {
     isError,
     refetch,
   } = useDashboardSummary(selectedYear, selectedScope, selectedMonth)
+
+  const queryClient = useQueryClient()
+  const [isManualReloading, setIsManualReloading] = useState(false)
+
+  const handleManualReload = async () => {
+    setIsManualReloading(true)
+    try {
+      await queryClient.invalidateQueries({
+        queryKey: ["dashboardSummary"],
+      })
+      await Promise.all([
+        refetch(),
+        new Promise((resolve) => setTimeout(resolve, 500)),
+      ])
+    } finally {
+      setIsManualReloading(false)
+    }
+  }
+
+  const showLoading = isLoading || isManualReloading
 
   const { data: divisionsData } = useDivisions()
   const { data: departmentsData } = useDepartments()
@@ -295,11 +316,11 @@ export const DashboardPage: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => refetch()}
+            onClick={handleManualReload}
             title="Muat ulang data dashboard"
             className="p-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-slate-700 shadow-2xs transition-all cursor-pointer"
           >
-            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin text-[#c8102e]" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${showLoading ? "animate-spin text-[#c8102e]" : ""}`} />
           </button>
         </div>
       </div>
@@ -442,7 +463,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {isLoading && (
+      {showLoading && (
         <div className="bg-white p-12 rounded-2xl border border-slate-200 shadow-2xs text-center space-y-4">
           <div className="w-12 h-12 rounded-2xl text-[#c8102e] mx-auto flex items-center justify-center">
             <RefreshCw className="w-10 h-10 animate-spin text-[#c8102e]" />
@@ -458,7 +479,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {!isLoading && (isError || !dashboardResponse) && (
+      {!showLoading && (isError || !dashboardResponse) && (
         <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-2xs text-center space-y-4">
           <div className="w-14 h-auto rounded-2xl text-red-600 mx-auto flex items-center justify-center shadow-xs">
             <AlertCircle className="w-10 h-10" />
@@ -480,7 +501,7 @@ export const DashboardPage: React.FC = () => {
               <span>Impor Berkas Excel</span>
             </button>
             <button
-              onClick={() => refetch()}
+              onClick={handleManualReload}
               className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 border border-red-500/40 rounded-xl cursor-pointer transition-colors"
             >
               Coba Muat Ulang
@@ -489,7 +510,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {!isLoading && dashboardResponse && (
+      {!showLoading && dashboardResponse && (
         <>
           <ExecutiveHeroMetrics
             selectedYear={selectedYear}
