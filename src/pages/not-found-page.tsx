@@ -5,8 +5,8 @@ import { Home, AlertTriangle } from "lucide-react"
 export const NotFoundPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-6 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-red-950/60 border border-red-500/30 flex items-center justify-center mb-4">
-        <AlertTriangle className="w-8 h-8 text-red-400" />
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4">
+        <AlertTriangle className="w-20 h-20 text-red-500" />
       </div>
       <span className="text-sm font-mono font-bold text-red-500 uppercase tracking-widest mb-1">
         Error 404
