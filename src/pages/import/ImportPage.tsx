@@ -170,7 +170,7 @@ export const ImportPage: React.FC = () => {
             <button
               type="button"
               onClick={() => downloadExcelTemplate(selectedModuleKey)}
-              className="flex items-center gap-2 text-xs font-bold text-[#c8102e] bg-red-50/50 hover:bg-red-100/60 border border-black-300 px-3.5 py-1.5  shadow-2xs transition-all cursor-pointer"
+              className="flex items-center gap-2 text-xs font-bold text-[#c8102e] bg-red-50/50 rounded-lg hover:bg-red-100/60 border border-black-300 px-3.5 py-1.5  shadow-2xs transition-all cursor-pointer"
               title={`Unduh format file Excel (.xlsx) acuan untuk ${currentModule.label}`}
             >
               <Download className="w-3.5 h-3.5 text-[#c8102e]" />
