@@ -79,6 +79,12 @@ export const DashboardPage: React.FC = () => {
 
   const showLoading = isLoading || isManualReloading
 
+  const hasData = useMemo(() => {
+    if (!dashboardResponse) return false;
+    const hc = dashboardResponse.summary?.demographics?.totalHeadcount || 0;
+    return hc > 0;
+  }, [dashboardResponse]);
+
   const { data: divisionsData } = useDivisions()
   const { data: departmentsData } = useDepartments()
 
@@ -479,7 +485,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {!showLoading && (isError || !dashboardResponse) && (
+      {!showLoading && (isError || !dashboardResponse || !hasData) && (
         <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-2xs text-center space-y-4">
           <div className="w-14 h-auto rounded-2xl text-red-600 mx-auto flex items-center justify-center shadow-xs">
             <AlertCircle className="w-10 h-10" />
@@ -510,7 +516,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {!showLoading && dashboardResponse && (
+      {!showLoading && dashboardResponse && hasData && (
         <>
           <ExecutiveHeroMetrics
             selectedYear={selectedYear}
