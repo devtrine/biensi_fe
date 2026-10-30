@@ -272,7 +272,6 @@ export const DashboardPage: React.FC = () => {
             {isMonthDropdownOpen && (
               <div className="absolute right-0 sm:left-0 sm:right-auto mt-1.5 w-52 max-h-64 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100">
                 {MONTHS.map((m) => {
-                  const isAvailable = availableMonthsSet.has(m.id)
                   const isSelected = selectedMonth === m.id
                   return (
                     <button
@@ -288,15 +287,7 @@ export const DashboardPage: React.FC = () => {
                         : "text-slate-700 hover:bg-slate-50"
                         }`}
                     >
-                      <span className="flex items-center gap-2">
-                        <span>{m.label}</span>
-                        {isAvailable && (
-                          <span
-                            className={`w-2 h-2 rounded-full ${isSelected ? "bg-emerald-400" : "bg-emerald-500"}`}
-                            title="Data periode tersedia"
-                          />
-                        )}
-                      </span>
+                      <span>{m.label}</span>
                       {isSelected && (
                         <Check className="w-3.5 h-3.5 text-white" />
                       )}
@@ -416,7 +407,7 @@ export const DashboardPage: React.FC = () => {
               }`}
           >
             <TableIcon className="w-4 h-4 text-slate-700" />
-            <span>Matriks Metrik (51 KPI)</span>
+            <span>Matriks Metrik</span>
           </button>
 
           <button
@@ -428,7 +419,7 @@ export const DashboardPage: React.FC = () => {
               }`}
           >
             <Layers className="w-4 h-4 text-slate-700" />
-            <span>Lengkap (Keduanya)</span>
+            <span>Lengkap </span>
           </button>
         </div>
 
