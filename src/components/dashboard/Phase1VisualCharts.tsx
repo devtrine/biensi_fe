@@ -328,26 +328,25 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
     tooltip: { theme: 'dark' }
   };
 
-  const levelStandard = apiDemo?.distribution?.byEmployeeLevel || {};
-  const employeeLevels = Array.isArray(apiDemo?.distribution?.byEmployeeLevel) && apiDemo.distribution.byEmployeeLevel.length > 0
+  const STANDARD_14_LEVELS = [
+    'Direktur/CEO', 'GM/VP', 'Manager', 'Asst Man', 'Head', 'Asst Head',
+    'Leader', 'Staff', 'Operator', 'Store Leader', 'Asst Store Leader',
+    'Kasir', 'Vm Store', 'Sales Advisor'
+  ];
+
+  const rawEmployeeLevels = Array.isArray(apiDemo?.distribution?.byEmployeeLevel) && apiDemo.distribution.byEmployeeLevel.length > 0
     ? apiDemo.distribution.byEmployeeLevel
-    : [
-        { level: 'BOD+', count: levelStandard.bodPlus || 0 },
-        { level: 'Manager', count: levelStandard.manager || 0 },
-        { level: 'Associate Manager', count: levelStandard.associateManager || 0 },
-        { level: 'Lead / Head', count: levelStandard.lead || 0 },
-        { level: 'Associate Lead', count: levelStandard.associateLead || 0 },
-        { level: 'Team Leader', count: levelStandard.teamLeader || 0 },
-        { level: 'Staff / Crew / SA', count: levelStandard.staffCrew || 0 }
-      ].map((item) => ({
-        ...item,
-        percentage: totalHeadcount > 0 ? Number(((item.count / totalHeadcount) * 100).toFixed(1)) : 0
-      }));
+    : STANDARD_14_LEVELS.map(level => ({ level, count: 0 }));
+
+  const employeeLevels = rawEmployeeLevels.map((item: any) => ({
+    ...item,
+    percentage: totalHeadcount > 0 ? Number(((item.count / totalHeadcount) * 100).toFixed(1)) : 0
+  }));
 
   const levelFunnelOptions: ApexCharts.ApexOptions = {
     chart: {
       type: 'bar',
-      height: 260,
+      height: 420,
       toolbar: { show: false },
       fontFamily: "'Geist', sans-serif"
     },
@@ -355,11 +354,26 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
       bar: {
         horizontal: true,
         borderRadius: 4,
-        barHeight: '65%',
+        barHeight: '75%',
         distributed: true
       }
     },
-    colors: ['#0F172A', '#1E293B', '#334155', '#475569', '#64748B', '#C8102E', '#E11D48'],
+    colors: [
+      '#0F172A', // Direktur/CEO (Slate 900)
+      '#1E293B', // GM/VP (Slate 800)
+      '#334155', // Manager (Slate 700)
+      '#475569', // Asst Man (Slate 600)
+      '#0284C7', // Head (Sky 600)
+      '#0EA5E9', // Asst Head (Sky 500)
+      '#2563EB', // Leader (Blue 600)
+      '#64748B', // Staff (Slate 500)
+      '#475569', // Operator (Slate 600)
+      '#991B1B', // Store Leader (Red 800)
+      '#B91C1C', // Asst Store Leader (Red 700)
+      '#DC2626', // Kasir (Red 600)
+      '#EA580C', // Vm Store (Orange 600)
+      '#C8102E'  // Sales Advisor (Biensi Brand Crimson)
+    ],
     dataLabels: {
       enabled: true,
       textAnchor: 'start',
@@ -368,9 +382,9 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
         const item = employeeLevels[idx] || employeeLevels[0];
         return `${item.count} (${item.percentage}%)`;
       },
-      offsetX: 10,
+      offsetX: 8,
       style: {
-        fontSize: '12px',
+        fontSize: '11px',
         fontFamily: "'Geist Mono', monospace",
         colors: ['#0F172A']
       }
@@ -385,7 +399,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
       labels: {
         style: {
           colors: '#334155',
-          fontSize: '12px',
+          fontSize: '11px',
           fontWeight: 600
         }
       }
@@ -1006,7 +1020,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
             </div>
 
             <div className="pt-2">
-              <Chart options={levelFunnelOptions} series={levelSeries} type="bar" height={240} />
+              <Chart options={levelFunnelOptions} series={levelSeries} type="bar" height={420} />
             </div>
           </div>
           <div className="pt-3 border-t border-slate-100 text-xs font-medium text-slate-600 flex items-center justify-between">
