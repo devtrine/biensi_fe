@@ -1036,7 +1036,7 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `HR_EXECUTIVE_DASHBOARD_Phase_1.0_${selectedYear}.csv`);
+    link.setAttribute('download', 'HR_EXECUTIVE_DASHBOARD.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

@@ -1,9 +1,11 @@
-import * as XLSX from "xlsx"
+import ExcelJS from "exceljs"
 import {
-  PHASE_1_TEMPLATE_ROWS,
-  CRITICAL_QA_TEMPLATE_ROWS,
   SP_TOKO_TEMPLATE_ROWS,
 } from "./templateMasterData"
+import {
+  DEMOGRAFI_HO_TEMPLATE_ROWS,
+  DEMOGRAFI_TOKO_TEMPLATE_ROWS,
+} from "./templateDemographyData"
 
 export function autoFitColumns(rows: any[][], minWidth = 12): { wch: number }[] {
   const colWidths: number[] = []
@@ -175,151 +177,11 @@ const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
     sheets: [
       {
         sheetName: "Master Data Demografi HO",
-        rows: [
-          [
-            "Employee No",
-            "No",
-            "Bulan",
-            "Tahun",
-            "DIVISI NEW SYFA",
-            "DEPARTEMEN NEW BY HRBP",
-            "UNIT DEPTBY HRBP",
-            "NAMA KARYAWAN",
-            "JABATAN",
-            "Level Jabatan",
-            "Jenis Kelamin",
-            "TANGGAL LAHIR",
-            "HEADCOUNT",
-            "TGL MSK KRJ",
-            "TGL HABIS KONTRAK",
-            "STATUS KARYAWAN",
-            "PENDIDIKAN TERAKHIR",
-            "Labour Cost per Employee ",
-            "BPJS KETENAGAKERJAAN",
-            "BPJS KESEHATAN"
-          ],
-          [
-            "A15161718",
-            1,
-            "September",
-            2026,
-            "COMMERCIAL BUSINESS",
-            "SALES ONLINE",
-            "CREATIVE & PRODUCTION ONLINE",
-            "ESMERALDA GONZALES",
-            "FOLLOW UP PRODUCTION ONLINE SPECIALIST",
-            "ASHEAD",
-            "PEREMPUAN",
-            "1990-05-15",
-            1,
-            "2020-01-10",
-            "2027-01-10",
-            "KONTRAK",
-            "SMA",
-            8512000,
-            "Terdaftar",
-            "Terdaftar"
-          ],
-          [
-            "A15161720",
-            2,
-            "September",
-            2026,
-            "BUSINESS SUPPORT",
-            "MARKETING",
-            "BRAND 3SECOND",
-            "SEBASTIAN GUNAWAN",
-            "GRAPHIC DESIGNER ONLINE",
-            "STAFF",
-            "LAKI-LAKI",
-            "1992-08-20",
-            1,
-            "2021-03-15",
-            "2026-12-31",
-            "TETAP",
-            "S1",
-            6500000,
-            "Terdaftar",
-            "Terdaftar"
-          ]
-        ]
+        rows: DEMOGRAFI_HO_TEMPLATE_ROWS
       },
       {
         sheetName: "Demografi Toko",
-        rows: [
-          [
-            "Employee No",
-            "No",
-            "Bulan",
-            "Tahun",
-            "DIVISI NEW",
-            "DEPARTEMEN NEW BY HRBP",
-            "NAMA TOKO",
-            "Area Regional",
-            "Kategori Toko",
-            "NAMA KARYAWAN",
-            "JABATAN",
-            "Level Jabatan",
-            "Jenis Kelamin",
-            "TANGGAL LAHIR",
-            "HEADCOUNT",
-            "TGL MSK KRJ",
-            "TGL HABIS KONTRAK",
-            "STATUS KARYAWAN",
-            "PENDIDIKAN TERAKHIR",
-            "Labour Cost per Employee",
-            "BPJS KETENAGAKERJAAN",
-            "BPJS KESEHATAN"
-          ],
-          [
-            "A15161760",
-            1,
-            "September",
-            2026,
-            "COMMERCIAL BUSINESS",
-            "SALES OFFLINE",
-            "SHOWROOM SUMMARECON MAL BKSI",
-            "BARAT",
-            "SHOWROOM",
-            "MEISYA SIREGAR",
-            "STORE LEADER",
-            "LEADER",
-            "PEREMPUAN",
-            "1993-11-12",
-            1,
-            "2022-02-01",
-            "2026-12-31",
-            "KONTRAK",
-            "SMK",
-            6850000,
-            "Sudah Terdaftar",
-            "Sudah Terdaftar"
-          ],
-          [
-            "A15161761",
-            2,
-            "September",
-            2026,
-            "COMMERCIAL BUSINESS",
-            "SALES OFFLINE",
-            "SHOWROOM SUMMARECON MAL BKSI",
-            "BARAT",
-            "SHOWROOM",
-            "SURYADI PERWIRA",
-            "SALES ADVISOR",
-            "STAFF",
-            "LAKI-LAKI",
-            "1998-04-10",
-            1,
-            "2023-05-10",
-            "2026-05-10",
-            "KONTRAK",
-            "SMA",
-            5200000,
-            "Sudah Terdaftar",
-            "Sudah Terdaftar"
-          ]
-        ]
+        rows: DEMOGRAFI_TOKO_TEMPLATE_ROWS
       }
     ]
   },
@@ -967,82 +829,172 @@ const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
   }
 }
 
-export function downloadExcelTemplate(moduleKey: string) {
-  const wb = XLSX.utils.book_new()
+async function exportWorkbookWithExcelJS(
+  sheets: { sheetName: string; rows: any[][] }[],
+  fileName: string
+) {
+  const wb = new ExcelJS.Workbook()
+  wb.creator = "Biensi HR Dashboard"
+  wb.created = new Date()
 
+  sheets.forEach((s) => {
+    const ws = wb.addWorksheet(s.sheetName.substring(0, 31), {
+      views: [{ state: "frozen", ySplit: 1 }]
+    })
+
+    const isWlkp = s.sheetName.toLowerCase().includes("wlkp")
+
+    s.rows.forEach((row, rowIdx) => {
+      const addedRow = ws.addRow(row)
+
+      if (rowIdx === 0) {
+        // HEADER ROW
+        addedRow.height = isWlkp ? 28 : 26
+        addedRow.eachCell((cell) => {
+          if (isWlkp) {
+            // KHUSUS WLKPP / WLKP dll: DESIGN HITAM PUTIH SEPERTI YANG DIKIRIM USER
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FF000000" } // Hitam pekat
+            }
+            cell.font = {
+              name: "Calibri",
+              size: 11,
+              bold: true,
+              color: { argb: "FFFFFFFF" } // Teks putih
+            }
+            cell.alignment = {
+              vertical: "middle",
+              horizontal: "center",
+              wrapText: true
+            }
+            cell.border = {
+              top: { style: "thin", color: { argb: "FF000000" } },
+              bottom: { style: "thin", color: { argb: "FF000000" } },
+              left: { style: "thin", color: { argb: "FF333333" } },
+              right: { style: "thin", color: { argb: "FF333333" } }
+            }
+          } else {
+            // Elegant modern header for other sheets
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FF0F172A" } // Slate 900
+            }
+            cell.font = {
+              name: "Calibri",
+              size: 11,
+              bold: true,
+              color: { argb: "FFFFFFFF" }
+            }
+            cell.alignment = {
+              vertical: "middle",
+              horizontal: "center",
+              wrapText: true
+            }
+            cell.border = {
+              top: { style: "thin", color: { argb: "FF334155" } },
+              bottom: { style: "thin", color: { argb: "FF334155" } },
+              left: { style: "thin", color: { argb: "FF334155" } },
+              right: { style: "thin", color: { argb: "FF334155" } }
+            }
+          }
+        })
+      } else {
+        // DATA ROW
+        addedRow.height = 20
+        addedRow.eachCell((cell) => {
+          cell.font = {
+            name: "Calibri",
+            size: 10,
+            color: { argb: "FF0F172A" }
+          }
+          cell.border = {
+            top: { style: "thin", color: { argb: "FFE2E8F0" } },
+            bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+            left: { style: "thin", color: { argb: "FFE2E8F0" } },
+            right: { style: "thin", color: { argb: "FFE2E8F0" } }
+          }
+          if (typeof cell.value === "number") {
+            cell.alignment = { vertical: "middle", horizontal: "right" }
+          } else if (
+            typeof cell.value === "string" &&
+            (cell.value.match(/^\d{4}-\d{2}-\d{2}$/) || cell.value === "-" || cell.value === "TETAP" || cell.value === "KONTRAK" || cell.value === "Aktif")
+          ) {
+            cell.alignment = { vertical: "middle", horizontal: "center" }
+          } else {
+            cell.alignment = { vertical: "middle", horizontal: "left" }
+          }
+        })
+      }
+    })
+
+    // Auto-fit column widths
+    ws.columns.forEach((col) => {
+      let maxLen = 12
+      col.eachCell?.({ includeEmpty: false }, (cell) => {
+        const valStr = cell.value ? String(cell.value) : ""
+        if (valStr.length > maxLen) {
+          maxLen = Math.min(valStr.length + 3, 40)
+        }
+      })
+      col.width = maxLen
+    })
+  })
+
+  const buffer = await wb.xlsx.writeBuffer()
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  })
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  window.URL.revokeObjectURL(url)
+}
+
+export async function downloadExcelTemplate(moduleKey: string) {
   if (moduleKey === "auto") {
-    // 1. Phase 1.0 (Master Baku 51 Metrik HR)
-    const wsPhase1 = XLSX.utils.aoa_to_sheet(PHASE_1_TEMPLATE_ROWS)
-    wsPhase1["!cols"] = autoFitColumns(PHASE_1_TEMPLATE_ROWS, 14)
-    XLSX.utils.book_append_sheet(wb, wsPhase1, "Phase 1.0")
+    const allSheets: { sheetName: string; rows: any[][] }[] = []
 
-    // 2. Critical Q&A (30 Business Impact Questions)
-    const wsQA = XLSX.utils.aoa_to_sheet(CRITICAL_QA_TEMPLATE_ROWS)
-    wsQA["!cols"] = autoFitColumns(CRITICAL_QA_TEMPLATE_ROWS, 15)
-    XLSX.utils.book_append_sheet(wb, wsQA, "Critical Q&A")
+    // 1. Master Data Demografi HO & Toko (50 rows data resmi yang dikirim user)
+    TEMPLATE_DEFINITIONS.employees.sheets.forEach((s) => allSheets.push(s))
 
-    // 3. Master Data Demografi HO & Toko
-    TEMPLATE_DEFINITIONS.employees.sheets.forEach((s) => {
-      const ws = XLSX.utils.aoa_to_sheet(s.rows)
-      ws["!cols"] = autoFitColumns(s.rows, 14)
-      XLSX.utils.book_append_sheet(wb, ws, s.sheetName.substring(0, 31))
+    // 2. Turnover HO & Toko
+    TEMPLATE_DEFINITIONS.movement.sheets.forEach((s) => allSheets.push(s))
+
+    // 3. Legalitas & Kepatuhan Toko (WLKP dll) - Design Hitam Putih
+    TEMPLATE_DEFINITIONS.compliance.sheets.forEach((s) => allSheets.push(s))
+
+    // 4. Absensi Kehadiran (HQ & Toko)
+    TEMPLATE_DEFINITIONS.attendance.sheets.forEach((s) => allSheets.push(s))
+
+    // 5. Rekap & Disiplin Detail (SPtoko, SPtoko-2026 & SP HO 2024-2026)
+    TEMPLATE_DEFINITIONS.sp.sheets.forEach((s) => allSheets.push(s))
+
+    // 6. Target & Realisasi Sales Toko (SALES2026)
+    TEMPLATE_DEFINITIONS.sales.sheets.forEach((s) => allSheets.push(s))
+
+    // 7. Fraud & Audit Opname Toko (Data Fraud 2022-2026)
+    TEMPLATE_DEFINITIONS.fraud.sheets.forEach((s) => allSheets.push(s))
+
+    // 8. Hubungan Industrial Bipartit & Mediasi (Kasus)
+    TEMPLATE_DEFINITIONS.bipartit.sheets.forEach((s) => allSheets.push(s))
+
+    // 9. Monitoring Rekrutmen & KPI Dashboard Completion
+    allSheets.push({
+      sheetName: "Recruitment_KPI",
+      rows: RECRUITMENT_KPI_TEMPLATE_ROWS
     })
 
-    // 4. Turnover HO & Toko
-    TEMPLATE_DEFINITIONS.movement.sheets.forEach((s) => {
-      const ws = XLSX.utils.aoa_to_sheet(s.rows)
-      ws["!cols"] = autoFitColumns(s.rows, 14)
-      XLSX.utils.book_append_sheet(wb, ws, s.sheetName.substring(0, 31))
-    })
-
-    // 5. Legalitas & Kepatuhan Toko (WLKP dll)
-    TEMPLATE_DEFINITIONS.compliance.sheets.forEach((s) => {
-      const ws = XLSX.utils.aoa_to_sheet(s.rows)
-      ws["!cols"] = autoFitColumns(s.rows, 14)
-      XLSX.utils.book_append_sheet(wb, ws, s.sheetName.substring(0, 31))
-    })
-
-    // 6. Absensi Kehadiran 2026 (HQ & Toko)
-    TEMPLATE_DEFINITIONS.attendance.sheets.forEach((s) => {
-      const ws = XLSX.utils.aoa_to_sheet(s.rows)
-      ws["!cols"] = autoFitColumns(s.rows, 14)
-      XLSX.utils.book_append_sheet(wb, ws, s.sheetName.substring(0, 31))
-    })
-
-    // 7. Rekap & Disiplin Detail (SPtoko, SPtoko-2026 & SP HO 2024-2026)
-    TEMPLATE_DEFINITIONS.sp.sheets.forEach((s) => {
-      const ws = XLSX.utils.aoa_to_sheet(s.rows)
-      ws["!cols"] = autoFitColumns(s.rows, 14)
-      XLSX.utils.book_append_sheet(wb, ws, s.sheetName.substring(0, 31))
-    })
-
-    // 8. Target & Realisasi Sales Toko (SALES2026)
-    TEMPLATE_DEFINITIONS.sales.sheets.forEach((s) => {
-      const ws = XLSX.utils.aoa_to_sheet(s.rows)
-      ws["!cols"] = autoFitColumns(s.rows, 14)
-      XLSX.utils.book_append_sheet(wb, ws, s.sheetName.substring(0, 31))
-    })
-
-    // 9. Fraud & Audit Opname Toko (Data Fraud 2022-2026)
-    TEMPLATE_DEFINITIONS.fraud.sheets.forEach((s) => {
-      const ws = XLSX.utils.aoa_to_sheet(s.rows)
-      ws["!cols"] = autoFitColumns(s.rows, 14)
-      XLSX.utils.book_append_sheet(wb, ws, s.sheetName.substring(0, 31))
-    })
-
-    // 10. Hubungan Industrial Bipartit & Mediasi (Kasus)
-    TEMPLATE_DEFINITIONS.bipartit.sheets.forEach((s) => {
-      const ws = XLSX.utils.aoa_to_sheet(s.rows)
-      ws["!cols"] = autoFitColumns(s.rows, 14)
-      XLSX.utils.book_append_sheet(wb, ws, s.sheetName.substring(0, 31))
-    })
-
-    // 11. Monitoring Rekrutmen & KPI Dashboard Completion 2026
-    const wsRecruit = XLSX.utils.aoa_to_sheet(RECRUITMENT_KPI_TEMPLATE_ROWS)
-    wsRecruit["!cols"] = autoFitColumns(RECRUITMENT_KPI_TEMPLATE_ROWS, 15)
-    XLSX.utils.book_append_sheet(wb, wsRecruit, "Recruitment_KPI")
-
-    XLSX.writeFile(wb, "Template_Induk_HR_Monitoring_Dashboard_v2.0.xlsx")
+    await exportWorkbookWithExcelJS(
+      allSheets,
+      "Template_Induk_HR_Monitoring_Dashboard.xlsx"
+    )
     return
   }
 
@@ -1051,11 +1003,5 @@ export function downloadExcelTemplate(moduleKey: string) {
     throw new Error(`Template untuk modul "${moduleKey}" tidak ditemukan.`)
   }
 
-  def.sheets.forEach((s) => {
-    const ws = XLSX.utils.aoa_to_sheet(s.rows)
-    ws["!cols"] = autoFitColumns(s.rows, 14)
-    XLSX.utils.book_append_sheet(wb, ws, s.sheetName.substring(0, 31))
-  })
-
-  XLSX.writeFile(wb, def.fileName)
+  await exportWorkbookWithExcelJS(def.sheets, def.fileName)
 }

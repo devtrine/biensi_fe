@@ -57,6 +57,9 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
   storeTypeFilter,
   regionalFilter,
 }) => {
+  const [hoveredHqKey, setHoveredHqKey] = React.useState<string | null>(null);
+  const [hoveredStoreKey, setHoveredStoreKey] = React.useState<string | null>(null);
+
   const apiDemo = dashboardData?.summary?.demographics;
   const apiProd = dashboardData?.summary?.productivity;
   const apiSp = dashboardData?.industrialAndSp;
@@ -519,6 +522,34 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
   const storePermitDisplay = calcCountPct(activeStoreAtt?.permissionCount, activeStoreAtt?.totalEmployees);
   const storeLeaveDisplay = calcCountPct(activeStoreAtt?.annualLeaveCount, activeStoreAtt?.totalEmployees);
   const storeAlphaDisplay = calcCountPct(activeStoreAtt?.absentCount, activeStoreAtt?.totalEmployees);
+
+  const parseAttendancePct = (v: any): number => {
+    if (v === null || v === undefined) return 0;
+    const n = parseFloat(String(v).replace('%', '').trim());
+    return isNaN(n) ? 0 : n;
+  };
+
+  const hqStatItems = [
+    { key: 'hadir', label: '% Hadir', display: avgAttendanceHq, val: parseAttendancePct(avgAttendanceHq) },
+    { key: 'sakit', label: '% Sakit', display: hqSickDisplay, val: parseAttendancePct(hqSickDisplay) },
+    { key: 'izin', label: '% Izin', display: hqPermitDisplay, val: parseAttendancePct(hqPermitDisplay) },
+    { key: 'cuti', label: '% Cuti', display: hqLeaveDisplay, val: parseAttendancePct(hqLeaveDisplay) },
+    { key: 'alpa', label: '% Alpa', display: hqAlphaDisplay, val: parseAttendancePct(hqAlphaDisplay) },
+  ];
+  const maxHqVal = Math.max(...hqStatItems.map(i => i.val));
+  const maxHqKey = maxHqVal > 0 ? (hqStatItems.find(i => i.val === maxHqVal)?.key || null) : null;
+  const activeHqKey = hoveredHqKey || maxHqKey;
+
+  const storeStatItems = [
+    { key: 'hadir', label: '% Hadir', display: avgAttendanceStore, val: parseAttendancePct(avgAttendanceStore) },
+    { key: 'sakit', label: '% Sakit', display: storeSickDisplay, val: parseAttendancePct(storeSickDisplay) },
+    { key: 'izin', label: '% Izin', display: storePermitDisplay, val: parseAttendancePct(storePermitDisplay) },
+    { key: 'cuti', label: '% Cuti', display: storeLeaveDisplay, val: parseAttendancePct(storeLeaveDisplay) },
+    { key: 'alpa', label: '% Alpa', display: storeAlphaDisplay, val: parseAttendancePct(storeAlphaDisplay) },
+  ];
+  const maxStoreVal = Math.max(...storeStatItems.map(i => i.val));
+  const maxStoreKey = maxStoreVal > 0 ? (storeStatItems.find(i => i.val === maxStoreVal)?.key || null) : null;
+  const activeStoreKey = hoveredStoreKey || maxStoreKey;
 
   const rawLeaderboard = dashboardData?.storePerformance?.storeLeaderboard || [];
   const filteredLeaderboard = rawLeaderboard.filter((s: any) => {
@@ -1095,26 +1126,53 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
                 </span>
               </div>
               <div className="grid grid-cols-5 gap-2 text-center">
-                <div className="bg-white p-2 rounded-lg border border-slate-100">
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold block">% Hadir</span>
-                  <span className="text-sm font-bold font-mono text-slate-900 tabular-nums">{avgAttendanceHq}</span>
-                </div>
-                <div className="bg-white p-2 rounded-lg border border-slate-100">
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold block">% Sakit</span>
-                  <span className="text-sm font-bold font-mono text-slate-900 tabular-nums">{hqSickDisplay}</span>
-                </div>
-                <div className="bg-white p-2 rounded-lg border border-slate-100">
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold block">% Izin</span>
-                  <span className="text-sm font-bold font-mono text-slate-900 tabular-nums">{hqPermitDisplay}</span>
-                </div>
-                <div className="bg-white p-2 rounded-lg border border-slate-100">
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold block">% Cuti</span>
-                  <span className="text-sm font-bold font-mono text-slate-900 tabular-nums">{hqLeaveDisplay}</span>
-                </div>
-                <div className="bg-emerald-50/70 p-2 rounded-lg border border-emerald-100">
-                  <span className="text-[10px] text-emerald-700 uppercase font-bold block">% Alpa</span>
-                  <span className="text-sm font-bold font-mono text-emerald-700 tabular-nums">{hqAlphaDisplay}</span>
-                </div>
+                {hqStatItems.map((item) => {
+                  const isSelected = activeHqKey === item.key;
+                  const isMax = maxHqKey === item.key && maxHqVal > 0;
+
+                  let cardCls = "bg-white border-slate-100 text-slate-900";
+                  let lblCls = "text-slate-500 font-semibold";
+                  let valCls = "text-slate-900";
+
+                  if (isSelected) {
+                    if (item.key === 'hadir') {
+                      cardCls = "bg-emerald-50/90 border-emerald-300 ring-1 ring-emerald-300/70 shadow-xs";
+                      lblCls = "text-emerald-700 font-bold";
+                      valCls = "text-emerald-700 font-black";
+                    } else if (item.key === 'alpa') {
+                      cardCls = "bg-rose-50/90 border-rose-300 ring-1 ring-rose-300/70 shadow-xs";
+                      lblCls = "text-rose-700 font-bold";
+                      valCls = "text-rose-700 font-black";
+                    } else {
+                      cardCls = "bg-sky-50/90 border-sky-300 ring-1 ring-sky-300/70 shadow-xs";
+                      lblCls = "text-sky-700 font-bold";
+                      valCls = "text-sky-700 font-black";
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={item.key}
+                      onMouseEnter={() => setHoveredHqKey(item.key)}
+                      onMouseLeave={() => setHoveredHqKey(null)}
+                      className={`p-2 rounded-lg border transition-all duration-200 cursor-pointer relative select-none hover:-translate-y-0.5 hover:shadow-xs ${cardCls}`}
+                      title={isMax ? `${item.label} merupakan persentase tertinggi (${item.display})` : undefined}
+                    >
+                      {isMax && (
+                        <span className="absolute -top-1 -right-1 flex h-2 w-2" title="Tertinggi">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                      )}
+                      <span className={`text-[10px] uppercase block transition-colors ${lblCls}`}>
+                        {item.label}
+                      </span>
+                      <span className={`text-sm font-bold font-mono tabular-nums transition-colors ${valCls}`}>
+                        {item.display}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -1129,26 +1187,53 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
                 </span>
               </div>
               <div className="grid grid-cols-5 gap-2 text-center">
-                <div className="bg-white p-2 rounded-lg border border-slate-100">
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold block">% Hadir</span>
-                  <span className="text-sm font-bold font-mono text-[#C8102E] tabular-nums">{avgAttendanceStore}</span>
-                </div>
-                <div className="bg-white p-2 rounded-lg border border-slate-100">
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold block">% Sakit</span>
-                  <span className="text-sm font-bold font-mono text-slate-900 tabular-nums">{storeSickDisplay}</span>
-                </div>
-                <div className="bg-white p-2 rounded-lg border border-slate-100">
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold block">% Izin</span>
-                  <span className="text-sm font-bold font-mono text-slate-900 tabular-nums">{storePermitDisplay}</span>
-                </div>
-                <div className="bg-white p-2 rounded-lg border border-slate-100">
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold block">% Cuti</span>
-                  <span className="text-sm font-bold font-mono text-slate-900 tabular-nums">{storeLeaveDisplay}</span>
-                </div>
-                <div className="bg-white p-2 rounded-lg border border-slate-100">
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold block">% Alpa</span>
-                  <span className="text-sm font-bold font-mono text-slate-900 tabular-nums">{storeAlphaDisplay}</span>
-                </div>
+                {storeStatItems.map((item) => {
+                  const isSelected = activeStoreKey === item.key;
+                  const isMax = maxStoreKey === item.key && maxStoreVal > 0;
+
+                  let cardCls = "bg-white border-slate-100 text-slate-900";
+                  let lblCls = "text-slate-500 font-semibold";
+                  let valCls = item.key === 'hadir' ? "text-[#C8102E]" : "text-slate-900";
+
+                  if (isSelected) {
+                    if (item.key === 'hadir') {
+                      cardCls = "bg-red-50/90 border-red-300 ring-1 ring-red-300/70 shadow-xs";
+                      lblCls = "text-[#C8102E] font-bold";
+                      valCls = "text-[#C8102E] font-black";
+                    } else if (item.key === 'alpa') {
+                      cardCls = "bg-rose-50/90 border-rose-300 ring-1 ring-rose-300/70 shadow-xs";
+                      lblCls = "text-rose-700 font-bold";
+                      valCls = "text-rose-700 font-black";
+                    } else {
+                      cardCls = "bg-sky-50/90 border-sky-300 ring-1 ring-sky-300/70 shadow-xs";
+                      lblCls = "text-sky-700 font-bold";
+                      valCls = "text-sky-700 font-black";
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={item.key}
+                      onMouseEnter={() => setHoveredStoreKey(item.key)}
+                      onMouseLeave={() => setHoveredStoreKey(null)}
+                      className={`p-2 rounded-lg border transition-all duration-200 cursor-pointer relative select-none hover:-translate-y-0.5 hover:shadow-xs ${cardCls}`}
+                      title={isMax ? `${item.label} merupakan persentase tertinggi (${item.display})` : undefined}
+                    >
+                      {isMax && (
+                        <span className="absolute -top-1 -right-1 flex h-2 w-2" title="Tertinggi">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#C8102E]"></span>
+                        </span>
+                      )}
+                      <span className={`text-[10px] uppercase block transition-colors ${lblCls}`}>
+                        {item.label}
+                      </span>
+                      <span className={`text-sm font-bold font-mono tabular-nums transition-colors ${valCls}`}>
+                        {item.display}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
