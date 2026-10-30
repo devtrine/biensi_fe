@@ -783,7 +783,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
             </span>
           </div>
           <p className="text-sm text-slate-600 mt-0.5">
-            Eksplorasi visual komprehensif berdasarkan 51 metrik baku HR_Monitoring_Dashboard v2.0
+            Eksplorasi visual komprehensif
           </p>
         </div>
 
