@@ -428,71 +428,6 @@ const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
             "Januari"
           ]
         ]
-      },
-      {
-        sheetName: "laporan SP 2024-26HO",
-        rows: [
-          ["DISCIPLINE REPORT"],
-          ["SP 2024 - 2026"],
-          ["Company : Biensi Fesyenindo"],
-          [
-            "No",
-            "Employee No",
-            "Name",
-            "Position",
-            "Organization Unit",
-            "LOKASI KERJA",
-            "Disciplines Information",
-            "",
-            "",
-            "",
-            "",
-            "Disciplines Category",
-            "",
-            "Jumlah",
-            "Divisi",
-            "Departement",
-            "Level Jabatan",
-            "Periode",
-            "Jumlah"
-          ],
-          [
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "Reference No",
-            "Disciplines Name",
-            "Start Date",
-            "End Date",
-            "Days Left",
-            "Tata Tertib",
-            "Non Tata Tertib"
-          ],
-          [
-            1,
-            "A15161718",
-            "DAFINA AURELIA MARPAUNG",
-            "Staff Of Design Graphic",
-            "Head Office",
-            "Bandung HQ",
-            "DIS-HO-2026-001",
-            "Surat Peringatan 2",
-            "2026-02-01",
-            "2026-08-01",
-            180,
-            1,
-            null,
-            1,
-            "Commercial Business",
-            "ONLINE",
-            "Staff",
-            "Februari 2026",
-            1
-          ]
-        ]
       }
     ]
   },
@@ -973,7 +908,7 @@ export async function downloadExcelTemplate(moduleKey: string) {
     // 4. Absensi Kehadiran (HQ & Toko)
     TEMPLATE_DEFINITIONS.attendance.sheets.forEach((s) => allSheets.push(s))
 
-    // 5. Rekap & Disiplin Detail (SPtoko, SPtoko-2026 & SP HO 2024-2026)
+    // 5. Rekap & Disiplin Detail (SPtoko & SPtoko-2026)
     TEMPLATE_DEFINITIONS.sp.sheets.forEach((s) => allSheets.push(s))
 
     // 6. Target & Realisasi Sales Toko (SALES2026)
