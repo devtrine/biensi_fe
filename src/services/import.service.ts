@@ -23,7 +23,7 @@ export const IMPORT_MODULES: ImportModuleOption[] = [
   {
     key: "employees",
     label: "Master Karyawan (HO & Toko)",
-    description: "Impor demografi karyawan, NIK, penempatan divisi/store, jabatan, tanggal kontrak, gaji pokok, dan BPJS.",
+    description: "Impor demografi karyawan per Bulan & Tahun, NIK, penempatan divisi/store, jabatan, tanggal kontrak, gaji pokok, dan BPJS.",
     endpoint: "/employees/import",
     category: "Karyawan",
     iconName: "Users",
@@ -38,8 +38,8 @@ export const IMPORT_MODULES: ImportModuleOption[] = [
   },
   {
     key: "compliance",
-    label: "Kepatuhan Toko (WLKP & Perizinan K3)",
-    description: "Impor kelengkapan legalitas toko: PP, OSS, WLKP, BPJS, Genset, dan instalasi listrik.",
+    label: "Perijinan Ketenagakerjaan (WLKP, PP & K3)",
+    description: "Impor matriks perijinan ketenagakerjaan (WLKP, PP, K3): entitas, nama toko, dokumen/perizinan, masa berlaku, PIC, dan status.",
     endpoint: "/compilance/import",
     category: "Kepatuhan",
     iconName: "Building2",
@@ -47,7 +47,7 @@ export const IMPORT_MODULES: ImportModuleOption[] = [
   {
     key: "sp",
     label: "Surat Peringatan Disiplin (SP)",
-    description: "Impor rekap Surat Peringatan (SP 1, 2, 3) kategori Tata Tertib & Non-Tata Tertib untuk HO & Store.",
+    description: "Impor rekap & detail Surat Peringatan (Jumlah SP Aktif & Jumlah SP Non Aktif) untuk HO & Store.",
     endpoint: "/disciplinary/import-sp",
     category: "Disiplin",
     iconName: "AlertTriangle",
@@ -120,22 +120,40 @@ export async function uploadToEndpoint(
   }
 }
 
-export async function triggerSnapshotGeneration(): Promise<number> {
-  try {
-    const { data: periodsRes } = await api.get<ApiResponse<Array<{ id: string }>>>("/reporting-monthly")
-    const periods = periodsRes?.data || []
-    let generatedCount = 0
+async function uploadSpCombined(
+  file: File
+): Promise<{ success: boolean; message: string; errors?: string[] }> {
+  const messages: string[] = []
+  const errors: string[] = []
+  let anyOk = false
 
-    for (const p of periods) {
-      try {
-        await api.post(`/reporting-monthly/${p.id}/snapshots/generate`)
-        generatedCount++
-      } catch {
-      }
+  try {
+    const detailRes = await uploadToEndpoint("/disciplinary/import-sp", file)
+    if (detailRes.success !== false) {
+      anyOk = true
+      messages.push(detailRes.message)
     }
-    return generatedCount
-  } catch {
-    return 0
+  } catch (err: any) {
+    errors.push(err?.response?.data?.message || err?.message || "Detail SP dilewati")
+  }
+
+  try {
+    const rekapRes = await uploadToEndpoint("/disciplinary/sp-rekap/import", file)
+    if (rekapRes.success !== false) {
+      anyOk = true
+      messages.push(rekapRes.message)
+    }
+  } catch (err: any) {
+    errors.push(err?.response?.data?.message || err?.message || "Rekap SP Toko dilewati")
+  }
+
+  if (!anyOk) {
+    throw new Error(errors[0] || "Gagal memproses berkas Surat Peringatan (SP).")
+  }
+
+  return {
+    success: true,
+    message: messages.join(" • ") || "Data Surat Peringatan berhasil diproses.",
   }
 }
 
@@ -155,7 +173,10 @@ export async function importAllModules(
     }
 
     try {
-      const res = await uploadToEndpoint(mod.endpoint, file)
+      const res =
+        mod.key === "sp"
+          ? await uploadSpCombined(file)
+          : await uploadToEndpoint(mod.endpoint, file)
       const isOk = res.success !== false
       if (isOk) anySuccess = true
 
@@ -182,13 +203,6 @@ export async function importAllModules(
         errors: [errMsg],
       })
       allErrors.push(`[${mod.label}] ${errMsg}`)
-    }
-  }
-
-  if (anySuccess) {
-    try {
-      await triggerSnapshotGeneration()
-    } catch {
     }
   }
 
@@ -221,14 +235,10 @@ export async function executeImport(
     onProgress(mod.label, 1, 1)
   }
 
-  const res = await uploadToEndpoint(mod.endpoint, file)
-
-  if (mod.key === "employees" && res.success !== false) {
-    try {
-      await triggerSnapshotGeneration()
-    } catch {
-    }
-  }
+  const res =
+    mod.key === "sp"
+      ? await uploadSpCombined(file)
+      : await uploadToEndpoint(mod.endpoint, file)
 
   return {
     success: res.success !== false,

@@ -15,6 +15,21 @@ interface Phase1MetricsTableProps {
   dashboardData?: any;
 }
 
+function fmtRatePct(rawRate: any): string | null {
+  if (rawRate === null || rawRate === undefined) return null;
+  const n = parseFloat(String(rawRate));
+  if (isNaN(n)) return null;
+  const pct = n <= 1.5 ? n * 100 : n;
+  return `${pct.toFixed(1)}%`;
+}
+
+function fmtCountPct(count: any, total: any): string | null {
+  const t = Number(total || 0);
+  if (t <= 0 || count === null || count === undefined) return null;
+  const c = Number(count || 0);
+  return `${((c / t) * 100).toFixed(1)}%`;
+}
+
 export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
   selectedYear,
   selectedScope,
@@ -43,7 +58,7 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
     const apiProd = dashboardData?.summary?.productivity;
     const apiSp = dashboardData?.industrialAndSp;
 
-    if (!scopeData && !apiDemo && !apiProd) {
+    if (!scopeData && !apiDemo && !apiProd && !apiSp && !dashboardData?.compliance) {
       return phase1Metrics;
     }
 
@@ -55,8 +70,29 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
     const expiringByScope = dashboardData?.turnoverAndRetention?.contractWatch?.expiringByScope;
     const overdueContracts = dashboardData?.industrialAndSp?.overdueContracts;
     const storeCostRatios = dashboardData?.storePerformance?.costRatioByStoreType;
-    const attHq = dashboardData?.summary?.attendanceByScope?.hq;
-    const attStore = dashboardData?.summary?.attendanceByScope?.store;
+
+    const attHistoryYear = (dashboardData?.attendanceHistory || []).filter(
+      (item: any) => Number(item?.period?.year) === Number(selectedYear)
+    );
+    let fallbackHqAtt: any = null;
+    let fallbackStoreAtt: any = null;
+    let maxHqMonth = 0;
+    let maxStoreMonth = 0;
+    attHistoryYear.forEach((item: any) => {
+      const m = Number(item?.period?.month || 0);
+      const sc = String(item?.scope || '').toUpperCase();
+      if (sc === 'HQ' && m >= maxHqMonth) {
+        maxHqMonth = m;
+        fallbackHqAtt = item;
+      }
+      if (sc === 'STORE' && m >= maxStoreMonth) {
+        maxStoreMonth = m;
+        fallbackStoreAtt = item;
+      }
+    });
+
+    const attHq = dashboardData?.summary?.attendanceByScope?.hq || fallbackHqAtt;
+    const attStore = dashboardData?.summary?.attendanceByScope?.store || fallbackStoreAtt;
 
     return phase1Metrics.map((m) => {
       if (m.no === 1) {
@@ -140,18 +176,25 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
 
       if (m.no === 6) {
         const cGender = corp.byGender || apiDemo?.distribution?.byGender;
+        const cL = cGender ? (cGender['LAKI-LAKI'] ?? cGender.LAKI_LAKI ?? cGender['Laki-laki'] ?? 0) : 0;
+        const cP = cGender ? (cGender.PEREMPUAN ?? cGender['Perempuan'] ?? 0) : 0;
+        const hL = hq.byGender ? (hq.byGender['LAKI-LAKI'] ?? hq.byGender.LAKI_LAKI ?? hq.byGender['Laki-laki'] ?? 0) : 0;
+        const hP = hq.byGender ? (hq.byGender.PEREMPUAN ?? hq.byGender['Perempuan'] ?? 0) : 0;
+        const sL = store.byGender ? (store.byGender['LAKI-LAKI'] ?? store.byGender.LAKI_LAKI ?? store.byGender['Laki-laki'] ?? 0) : 0;
+        const sP = store.byGender ? (store.byGender.PEREMPUAN ?? store.byGender['Perempuan'] ?? 0) : 0;
+        const hasGender = cL + cP > 0;
         return {
           ...m,
-          formattedCorporate: cGender ? `L: ${cGender.LAKI_LAKI || cGender['Laki-laki'] || 0} / P: ${cGender.PEREMPUAN || cGender['Perempuan'] || 0}` : '-',
-          formattedHQ: hq.byGender ? `L: ${hq.byGender.LAKI_LAKI || hq.byGender['Laki-laki'] || 0} / P: ${hq.byGender.PEREMPUAN || hq.byGender['Perempuan'] || 0}` : '-',
-          formattedStore: store.byGender ? `L: ${store.byGender.LAKI_LAKI || store.byGender['Laki-laki'] || 0} / P: ${store.byGender.PEREMPUAN || store.byGender['Perempuan'] || 0}` : '-',
-          status: cGender ? 'optimal' : 'neutral',
-          statusLabel: cGender ? 'Seimbang' : '-',
+          formattedCorporate: hasGender ? `L: ${cL} / P: ${cP}` : '-',
+          formattedHQ: hL + hP > 0 ? `L: ${hL} / P: ${hP}` : '-',
+          formattedStore: sL + sP > 0 ? `L: ${sL} / P: ${sP}` : '-',
+          status: hasGender ? 'optimal' : 'neutral',
+          statusLabel: hasGender ? 'Seimbang' : '-',
         };
       }
 
       if (m.no === 7) {
-        const cAge = corp.avgAge || apiDemo?.avgAge || 0;
+        const cAge = corp.avgAge || apiDemo?.avgAgeAtPeriod || apiDemo?.avgAge || 0;
         const hAge = hq.avgAge || 0;
         const sAge = store.avgAge || 0;
         return {
@@ -159,16 +202,16 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
           totalCorporate: cAge,
           hq: hAge,
           store: sAge,
-          formattedCorporate: cAge > 0 ? `${cAge} Tahun` : '-',
-          formattedHQ: hAge > 0 ? `${hAge} Tahun` : '-',
-          formattedStore: sAge > 0 ? `${sAge} Tahun` : '-',
+          formattedCorporate: cAge > 0 ? `Avg ${cAge} Thn (7 Kategori Usia)` : '-',
+          formattedHQ: hAge > 0 ? `Avg ${hAge} Tahun` : '-',
+          formattedStore: sAge > 0 ? `Avg ${sAge} Tahun` : '-',
           status: cAge > 0 ? 'optimal' : 'neutral',
           statusLabel: cAge > 0 ? 'Produktif' : '-',
         };
       }
 
       if (m.no === 8) {
-        const cTenure = corp.avgTenure || apiDemo?.avgTenure || 0;
+        const cTenure = corp.avgTenure || apiDemo?.avgTenureYears || apiDemo?.avgTenure || 0;
         const hTenure = hq.avgTenure || 0;
         const sTenure = store.avgTenure || 0;
         return {
@@ -176,9 +219,9 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
           totalCorporate: cTenure,
           hq: hTenure,
           store: sTenure,
-          formattedCorporate: cTenure > 0 ? `${cTenure} Tahun` : '-',
-          formattedHQ: hTenure > 0 ? `${hTenure} Tahun` : '-',
-          formattedStore: sTenure > 0 ? `${sTenure} Tahun` : '-',
+          formattedCorporate: cTenure > 0 ? `Avg ${cTenure} Thn (6 Kategori Masa Kerja)` : '-',
+          formattedHQ: hTenure > 0 ? `Avg ${hTenure} Tahun` : '-',
+          formattedStore: sTenure > 0 ? `Avg ${sTenure} Tahun` : '-',
           status: cTenure > 0 ? 'optimal' : 'neutral',
           statusLabel: cTenure > 0 ? 'Stabil' : '-',
         };
@@ -433,13 +476,33 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
       }
 
       if (m.no === 25) {
+        const compPermits = dashboardData?.compliance || apiSp?.compliancePermits;
+        const cComp = compPermits?.byScope?.corporate;
+        const hComp = compPermits?.byScope?.hq;
+        const sComp = compPermits?.byScope?.store;
+        const fmtComp = (sc: any) => {
+          if (!sc || !sc.total) return '-';
+          return `WLKP: ${sc.wlkp} | PP: ${sc.pp} | K3: ${sc.k3} (${sc.patuh}/${sc.total} Aktif)`;
+        };
+        const hasComp = (cComp?.total || 0) > 0;
+        const hasExpired = (cComp?.kadaluarsa || 0) > 0;
+        const hasExpiring = (cComp?.akanJatuhTempo || 0) > 0;
         return {
           ...m,
-          formattedCorporate: '100% Izin Aktif',
-          formattedHQ: 'WLKP Aktif',
-          formattedStore: 'PP & K3 Terverifikasi',
-          status: 'optimal',
-          statusLabel: 'Patuh UU',
+          totalCorporate: cComp?.total || 0,
+          hq: hComp?.total || 0,
+          store: sComp?.total || 0,
+          formattedCorporate: fmtComp(cComp),
+          formattedHQ: fmtComp(hComp),
+          formattedStore: fmtComp(sComp),
+          status: !hasComp ? 'neutral' : hasExpired ? 'alert' : hasExpiring ? 'normal' : 'optimal',
+          statusLabel: !hasComp
+            ? '-'
+            : hasExpired
+              ? `${cComp.kadaluarsa} Kadaluarsa`
+              : hasExpiring
+                ? `${cComp.akanJatuhTempo} Segera Habis`
+                : 'Patuh UU (Aktif)',
         };
       }
 
@@ -464,14 +527,20 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
         const totalSp = apiSp?.totalSpIssued || 0;
         const hSp = apiSp?.hqSp?.total || 0;
         const sSp = apiSp?.storeSp?.total || 0;
+        const hAktif = apiSp?.hqSp?.spAktif ?? apiSp?.hqSp?.tataTertib ?? 0;
+        const hNonAktif = apiSp?.hqSp?.spNonAktif ?? apiSp?.hqSp?.nonTataTertib ?? 0;
+        const sAktif = apiSp?.storeSp?.spAktif ?? apiSp?.storeSp?.tataTertib ?? 0;
+        const sNonAktif = apiSp?.storeSp?.spNonAktif ?? apiSp?.storeSp?.nonTataTertib ?? 0;
+        const cAktif = apiSp?.corporateSp?.spAktif ?? (hAktif + sAktif);
+        const cNonAktif = apiSp?.corporateSp?.spNonAktif ?? (hNonAktif + sNonAktif);
         return {
           ...m,
           totalCorporate: totalSp,
           hq: hSp,
           store: sSp,
-          formattedCorporate: `${totalSp} SP`,
-          formattedHQ: `${hSp} SP`,
-          formattedStore: `${sSp} SP`,
+          formattedCorporate: totalSp > 0 ? `${totalSp} SP (Aktif: ${cAktif} | Non Aktif: ${cNonAktif})` : '0 SP',
+          formattedHQ: hSp > 0 ? `${hSp} SP (Aktif: ${hAktif} | Non Aktif: ${hNonAktif})` : '0 SP',
+          formattedStore: sSp > 0 ? `${sSp} SP (Aktif: ${sAktif} | Non Aktif: ${sNonAktif})` : '0 SP',
           status: totalSp > 0 ? 'normal' : 'neutral',
           statusLabel: totalSp > 0 ? 'Terekam' : '-',
         };
@@ -706,66 +775,72 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
       }
 
       if (m.no === 40) {
-        const safeH = attHq?.presentRate && attHq.presentRate !== '0%' && !attHq.presentRate.includes('NaN') ? attHq.presentRate : '91.6%';
-        const safeS = attStore?.presentRate && attStore.presentRate !== '0%' && !attStore.presentRate.includes('NaN') ? attStore.presentRate : '76.4%';
+        const hVal = fmtRatePct(attHq?.attendanceRate);
+        const sVal = fmtRatePct(attStore?.attendanceRate);
+        const hasAtt = Boolean(hVal || sVal);
         return {
           ...m,
-          totalCorporate: safeH,
-          hq: safeH,
-          store: safeS,
-          formattedCorporate: `${safeH} HQ / ${safeS} Store`,
-          formattedHQ: `${safeH}`,
-          formattedStore: `${safeS}`,
-          status: 'optimal',
-          statusLabel: 'Tinggi',
+          totalCorporate: hVal || sVal || '-',
+          hq: hVal || '-',
+          store: sVal || '-',
+          formattedCorporate: hasAtt ? `${hVal || '-'} HQ / ${sVal || '-'} Store` : '-',
+          formattedHQ: hVal || '-',
+          formattedStore: sVal || '-',
+          status: hasAtt ? 'optimal' : 'neutral',
+          statusLabel: hasAtt ? 'Tinggi' : '-',
         };
       }
 
       if (m.no === 41) {
-        const safeH = attHq?.sickRate && attHq.sickRate !== '0%' && !attHq.sickRate.includes('NaN') ? attHq.sickRate : '7.1%';
-        const safeS = attStore?.sickRate && attStore.sickRate !== '0%' && !attStore.sickRate.includes('NaN') ? attStore.sickRate : '17.8%';
+        const hSick = fmtCountPct(attHq?.sickCount, attHq?.totalEmployees);
+        const hIzin = fmtCountPct(attHq?.permissionCount, attHq?.totalEmployees);
+        const sSick = fmtCountPct(attStore?.sickCount, attStore?.totalEmployees);
+        const sIzin = fmtCountPct(attStore?.permissionCount, attStore?.totalEmployees);
+        const hasAtt = Boolean(hSick || sSick);
         return {
           ...m,
-          totalCorporate: safeH,
-          hq: safeH,
-          store: safeS,
-          formattedCorporate: `${safeH} HQ / ${safeS} Store`,
-          formattedHQ: `${safeH}`,
-          formattedStore: `${safeS}`,
-          status: 'optimal',
-          statusLabel: '< 5.0% (Terkendali)',
+          totalCorporate: hSick || sSick || '-',
+          hq: hSick || '-',
+          store: sSick || '-',
+          formattedCorporate: hasAtt ? `Sakit ${hSick || '-'} HQ / ${sSick || '-'} Store` : '-',
+          formattedHQ: hSick ? `${hSick} (Izin: ${hIzin || '0.0%'})` : '-',
+          formattedStore: sSick ? `${sSick} (Izin: ${sIzin || '0.0%'})` : '-',
+          status: hasAtt ? 'optimal' : 'neutral',
+          statusLabel: hasAtt ? 'Terekam' : '-',
         };
       }
 
       if (m.no === 42) {
-        const safeH = attHq?.leaveRate && attHq.leaveRate !== '0%' && !attHq.leaveRate.includes('NaN') ? attHq.leaveRate : '11.4%';
-        const safeS = attStore?.leaveRate && attStore.leaveRate !== '0%' && !attStore.leaveRate.includes('NaN') ? attStore.leaveRate : '41.3%';
+        const hLeave = fmtCountPct(attHq?.annualLeaveCount, attHq?.totalEmployees);
+        const sLeave = fmtCountPct(attStore?.annualLeaveCount, attStore?.totalEmployees);
+        const hasAtt = Boolean(hLeave || sLeave);
         return {
           ...m,
-          totalCorporate: safeH,
-          hq: safeH,
-          store: safeS,
-          formattedCorporate: `${safeH} HQ / ${safeS} Store`,
-          formattedHQ: `${safeH}`,
-          formattedStore: `${safeS}`,
-          status: 'optimal',
-          statusLabel: 'Terjadwal',
+          totalCorporate: hLeave || sLeave || '-',
+          hq: hLeave || '-',
+          store: sLeave || '-',
+          formattedCorporate: hasAtt ? `${hLeave || '-'} HQ / ${sLeave || '-'} Store` : '-',
+          formattedHQ: hLeave || '-',
+          formattedStore: sLeave || '-',
+          status: hasAtt ? 'optimal' : 'neutral',
+          statusLabel: hasAtt ? 'Terjadwal' : '-',
         };
       }
 
       if (m.no === 43) {
-        const safeH = attHq?.alphaRate && !attHq.alphaRate.includes('NaN') ? attHq.alphaRate : '0.0%';
-        const safeS = attStore?.alphaRate && !attStore.alphaRate.includes('NaN') ? attStore.alphaRate : '5.3%';
+        const hAlpha = fmtCountPct(attHq?.absentCount, attHq?.totalEmployees);
+        const sAlpha = fmtCountPct(attStore?.absentCount, attStore?.totalEmployees);
+        const hasAtt = Boolean(hAlpha || sAlpha);
         return {
           ...m,
-          totalCorporate: safeH,
-          hq: safeH,
-          store: safeS,
-          formattedCorporate: `${safeH} HQ / ${safeS} Store`,
-          formattedHQ: `${safeH}`,
-          formattedStore: `${safeS}`,
-          status: 'optimal',
-          statusLabel: 'Rendah (< 2%)',
+          totalCorporate: hAlpha || sAlpha || '-',
+          hq: hAlpha || '-',
+          store: sAlpha || '-',
+          formattedCorporate: hasAtt ? `${hAlpha || '-'} HQ / ${sAlpha || '-'} Store` : '-',
+          formattedHQ: hAlpha || '-',
+          formattedStore: sAlpha || '-',
+          status: hasAtt ? 'optimal' : 'neutral',
+          statusLabel: hasAtt ? 'Rendah (< 2% HQ)' : '-',
         };
       }
 
@@ -921,7 +996,7 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
 
       return m;
     });
-  }, [dashboardData]);
+  }, [dashboardData, selectedYear]);
 
   const filteredMetrics = computedMetrics
     .filter((m) => {
@@ -973,7 +1048,7 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-lg font-bold text-slate-900 tracking-tight font-heading">
-              Matriks Metrik KPI (51 Metrik Baku)
+              Matriks Metrik KPI
             </h3>
           </div>
           <p className="text-sm text-slate-600 mt-1">

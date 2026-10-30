@@ -1,6 +1,6 @@
 import { api } from "../lib/api/client"
 import type { ApiResponse } from "../types/api"
-import type { MainDashboardResponse } from "../types/dashboard"
+import type { AttendanceAggregateItem, MainDashboardResponse } from "../types/dashboard"
 
 export interface ReportingPeriodItem {
   id: string
@@ -20,13 +20,26 @@ export async function getDashboardSummary(
     if (year) params.append("year", year)
     if (scope) params.append("scope", scope)
 
-    const effectiveMonth = month || (year === "2026" ? "7" : undefined)
+    const effectiveMonth = month || (year === "2026" ? "9" : undefined)
     if (effectiveMonth) params.append("month", effectiveMonth)
 
-    const { data } = await api.get<ApiResponse<MainDashboardResponse>>(
-      `/dashboard/summary?${params.toString()}`
-    )
-    return data?.data || null
+    const [summaryRes, attHistoryRes] = await Promise.all([
+      api.get<ApiResponse<MainDashboardResponse>>(
+        `/dashboard/summary?${params.toString()}`
+      ),
+      api
+        .get<ApiResponse<AttendanceAggregateItem[]>>("/reporting-monthly/attendance")
+        .catch(() => null),
+    ])
+
+    const mainData = summaryRes.data?.data || null
+    if (!mainData) return null
+
+    mainData.attendanceHistory = Array.isArray(attHistoryRes?.data?.data)
+      ? attHistoryRes!.data.data
+      : []
+
+    return mainData
   } catch {
     return null
   }

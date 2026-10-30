@@ -171,14 +171,16 @@ export interface TemplateDefinition {
 const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
   employees: {
     moduleKey: "employees",
-    fileName: "Template_Master_Karyawan_HO_dan_Toko.xlsx",
+    fileName: "Template_Master_Demografi_Karyawan_Bulanan.xlsx",
     sheets: [
       {
-        sheetName: "Master Data Demografi Sep 26",
+        sheetName: "Master Data Demografi HO",
         rows: [
           [
             "Employee No",
             "No",
+            "Bulan",
+            "Tahun",
             "DIVISI NEW SYFA",
             "DEPARTEMEN NEW BY HRBP",
             "UNIT DEPTBY HRBP",
@@ -199,6 +201,8 @@ const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
           [
             "A15161718",
             1,
+            "September",
+            2026,
             "COMMERCIAL BUSINESS",
             "SALES ONLINE",
             "CREATIVE & PRODUCTION ONLINE",
@@ -219,6 +223,8 @@ const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
           [
             "A15161720",
             2,
+            "September",
+            2026,
             "BUSINESS SUPPORT",
             "MARKETING",
             "BRAND 3SECOND",
@@ -239,14 +245,18 @@ const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
         ]
       },
       {
-        sheetName: "demografi Toko September 2026",
+        sheetName: "Demografi Toko",
         rows: [
           [
             "Employee No",
             "No",
+            "Bulan",
+            "Tahun",
             "DIVISI NEW",
             "DEPARTEMEN NEW BY HRBP",
             "NAMA TOKO",
+            "Area Regional",
+            "Kategori Toko",
             "NAMA KARYAWAN",
             "JABATAN",
             "Level Jabatan",
@@ -264,9 +274,13 @@ const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
           [
             "A15161760",
             1,
+            "September",
+            2026,
             "COMMERCIAL BUSINESS",
             "SALES OFFLINE",
             "SHOWROOM SUMMARECON MAL BKSI",
+            "BARAT",
+            "SHOWROOM",
             "MEISYA SIREGAR",
             "STORE LEADER",
             "LEADER",
@@ -284,9 +298,13 @@ const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
           [
             "A15161761",
             2,
+            "September",
+            2026,
             "COMMERCIAL BUSINESS",
             "SALES OFFLINE",
             "SHOWROOM SUMMARECON MAL BKSI",
+            "BARAT",
+            "SHOWROOM",
             "SURYADI PERWIRA",
             "SALES ADVISOR",
             "STAFF",
@@ -315,10 +333,12 @@ const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
           [
             "NO",
             "BULAN",
+            "Employee No",
+            "NAMA KARYAWAN",
             "DIVISI",
             "DEPARTEMEN",
+            "JABATAN / POSITION",
             "JML",
-            "NAMA KARYAWAN",
             "TANGGAL MASUK KERJA",
             "TANGGAL RESIGN/HABIS KONTRAK",
             "KATEGORI PHK"
@@ -326,10 +346,12 @@ const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
           [
             1,
             "Januari 2026",
+            "A15161801",
+            "DAFINA AURELIA MARPAUNG",
             "SUPPLY CHAIN",
             "R&D DESIGN",
+            "STAFF OF DESIGN GRAPHIC",
             1,
-            "DAFINA AURELIA MARPAUNG",
             "2023-01-15",
             "2026-01-10",
             "MENGUNDURKAN DIRI"
@@ -337,10 +359,12 @@ const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
           [
             2,
             "Januari 2026",
+            "A15161802",
+            "KARINA BAHRIANI",
             "COMMERCIAL BUSINESS",
             "MARKETING",
+            "MARKETING SPECIALIST",
             1,
-            "KARINA BAHRIANI",
             "2022-06-01",
             "2026-01-20",
             "HABIS KONTRAK"
@@ -356,28 +380,51 @@ const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
             "ASST HEAD",
             "KATAGORI",
             "SHOWROOM / COUNTER",
-            "JML",
+            "Employee No",
             "NAMA KARYAWAN",
+            "JABATAN / POSITION",
+            "JML",
             "TANGGAL MASUK KERJA",
             "TGL RESIGN / HABIS KONTRAK",
             "ALASAN RESIGN SOP",
-            "ALASAN RESIGN NON SOP",
+            "ALASAN RESIGN KASUS / NON SOP",
             "ALASAN HABIS KONTRAK",
+            "ALASAN CLOSING TOKO",
             "ALASAN PHK"
           ],
-          [],
           [
             1,
             "BARAT",
             "IVAN MAULANA",
             "SHOWROOM",
             "SHOWROOM PVJ BANDUNG",
-            1,
+            "A24090101",
             "ANDI SETIAWAN",
+            "SALES ADVISOR",
+            1,
             "2024-03-01",
             "2026-01-15",
             "MENDAPATKAN PEKERJAAN LAIN",
             null,
+            null,
+            null,
+            null
+          ],
+          [
+            2,
+            "TIMUR",
+            "DEDEN",
+            "FAMILY STORE",
+            "FS MER SURABAYA",
+            "A24090102",
+            "RINA MELATI",
+            "CASHIER",
+            1,
+            "2023-05-10",
+            "2026-02-28",
+            null,
+            null,
+            "HABIS KONTRAK",
             null,
             null
           ]
@@ -387,66 +434,66 @@ const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
   },
   compliance: {
     moduleKey: "compliance",
-    fileName: "Template_Kepatuhan_Legalitas_Toko.xlsx",
+    fileName: "Template_Perijinan_Ketenagakerjaan_WLKP_PP_K3.xlsx",
     sheets: [
       {
         sheetName: "WLKP dll",
         rows: [
-          ["DATA KEPATUHAN & LEGALITAS TOKO RITEL"],
-          [],
-          [],
-          [],
           [
-            "No",
-            "Regional",
-            "Kategori",
-            "Store Name",
-            "Alamat Toko",
-            "Luas (m2)",
-            "Jml Karyawan",
-            "PP Tgl Awal",
-            "PP Tgl Akhir",
-            "WLKP Tgl Awal",
-            "WLKP Tgl Akhir",
-            "Status WLKP",
-            "BPJS Jml Terdaftar",
-            "BPJS Tgl Awal",
-            "BPJS Tgl Akhir",
-            "Status BPJS",
-            "Genset Tgl Awal",
-            "Genset Tgl Akhir",
-            "Status Genset",
-            "Kapasitas KVA",
-            "Status Izin Genset",
-            "Instalasi Listrik KVA",
-            "Instalasi Listrik Tgl Awal",
-            "Instalasi Listrik Tgl Akhir"
+            "No.",
+            "Perusahaan / Entitas",
+            "Jenis Perijinan Ketenagakerjaan",
+            "Nama Toko",
+            "Dokumen / Perizinan",
+            "Lokasi",
+            "Tanggal Terbit",
+            "Tanggal Berakhir",
+            "PIC",
+            "Status",
+            "Sisa Hari",
+            "Keterangan"
           ],
           [
             1,
-            "BARAT",
-            "SHOWROOM",
-            "SHOWROOM SUMMARECON MAL BKSI",
-            "Summarecon Mall Bekasi Lt. 1",
-            120,
-            12,
-            "2024-01-01",
-            "2026-12-31",
-            "2024-06-01",
-            "2027-06-01",
-            "LENGKAP",
-            12,
-            "2024-01-01",
-            "2026-12-31",
-            "LENGKAP",
-            "2023-01-01",
-            "2026-01-01",
-            "LENGKAP",
-            50,
-            "LENGKAP",
-            60,
-            "2023-01-01",
-            "2026-01-01"
+            "Biensi",
+            "WLKP",
+            null,
+            "Pelaporan WLKP Online",
+            "HO",
+            null,
+            null,
+            "HR Compliance",
+            "Aktif",
+            0,
+            "Monitoring pelaporan"
+          ],
+          [
+            2,
+            "Biensi",
+            "PP",
+            null,
+            "Pengesahan Peraturan Perusahaan",
+            "HO",
+            "04-Oct-26",
+            "04-Oct-27",
+            "HR Service",
+            "Aktif",
+            365,
+            "Persiapan pembaruan"
+          ],
+          [
+            3,
+            "Biensi",
+            "K3",
+            null,
+            "Sertifikat / dokumen K3",
+            "HO",
+            null,
+            null,
+            "GA / K3",
+            "Aktif",
+            0,
+            "Monitoring masa berlaku"
           ]
         ]
       }
@@ -456,6 +503,10 @@ const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
     moduleKey: "sp",
     fileName: "Template_Surat_Peringatan_SP.xlsx",
     sheets: [
+      {
+        sheetName: "SPtoko",
+        rows: SP_TOKO_TEMPLATE_ROWS
+      },
       {
         sheetName: "SPtoko-2026",
         rows: [
@@ -818,30 +869,57 @@ const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
         sheetName: "SALES2026",
         rows: [
           ["REKAP TARGET & REALISASI SALES 2026"],
-          [],
-          [],
           [
             "NO",
             "NAMA TOKO",
             "REG",
             "JENIS TOKO",
+            "Target JAN 2026",
+            null,
             "Actual JAN 2026",
-            "",
+            null,
+            "Target FEB 2026",
+            null,
             "Actual FEB 2026",
-            "",
+            null,
+            "Target MARET 2026",
+            null,
             "Actual MARET 2026",
-            ""
+            null
           ],
-          ["", "", "", "", "qty ", "Value ", "qty ", "Value ", "qty ", "Value "],
+          [
+            null,
+            null,
+            null,
+            null,
+            "qty ",
+            "Value ",
+            "qty ",
+            "Value ",
+            "qty ",
+            "Value ",
+            "qty ",
+            "Value ",
+            "qty ",
+            "Value ",
+            "qty ",
+            "Value "
+          ],
           [
             1,
             "SHOWROOM SUMMARECON MAL BKSI",
             "BARAT",
             "SHOWROOM",
+            480,
+            115000000,
             500,
             120000000,
+            430,
+            105000000,
             450,
             110000000,
+            550,
+            140000000,
             600,
             150000000
           ],
@@ -850,10 +928,16 @@ const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
             "COUNTER 3S PLAZA ASIA TASIK",
             "BARAT",
             "COUNTER",
+            200,
+            50000000,
             215,
             52483710,
+            380,
+            75000000,
             402,
             77845600,
+            1150,
+            225000000,
             1247,
             241685700
           ]
@@ -925,40 +1009,35 @@ export function downloadExcelTemplate(moduleKey: string) {
       XLSX.utils.book_append_sheet(wb, ws, s.sheetName.substring(0, 31))
     })
 
-    // 7. Matriks Rekapan SP Toko 3 Tahun (SPtoko)
-    const wsSpToko = XLSX.utils.aoa_to_sheet(SP_TOKO_TEMPLATE_ROWS)
-    wsSpToko["!cols"] = autoFitColumns(SP_TOKO_TEMPLATE_ROWS, 12)
-    XLSX.utils.book_append_sheet(wb, wsSpToko, "SPtoko")
-
-    // 8. Disiplin Detail (SP Toko 2026 & SP HO 2024-2026)
+    // 7. Rekap & Disiplin Detail (SPtoko, SPtoko-2026 & SP HO 2024-2026)
     TEMPLATE_DEFINITIONS.sp.sheets.forEach((s) => {
       const ws = XLSX.utils.aoa_to_sheet(s.rows)
       ws["!cols"] = autoFitColumns(s.rows, 14)
       XLSX.utils.book_append_sheet(wb, ws, s.sheetName.substring(0, 31))
     })
 
-    // 9. Target & Realisasi Sales Toko (SALES2026)
+    // 8. Target & Realisasi Sales Toko (SALES2026)
     TEMPLATE_DEFINITIONS.sales.sheets.forEach((s) => {
       const ws = XLSX.utils.aoa_to_sheet(s.rows)
       ws["!cols"] = autoFitColumns(s.rows, 14)
       XLSX.utils.book_append_sheet(wb, ws, s.sheetName.substring(0, 31))
     })
 
-    // 10. Fraud & Audit Opname Toko (Data Fraud 2022-2026)
+    // 9. Fraud & Audit Opname Toko (Data Fraud 2022-2026)
     TEMPLATE_DEFINITIONS.fraud.sheets.forEach((s) => {
       const ws = XLSX.utils.aoa_to_sheet(s.rows)
       ws["!cols"] = autoFitColumns(s.rows, 14)
       XLSX.utils.book_append_sheet(wb, ws, s.sheetName.substring(0, 31))
     })
 
-    // 11. Hubungan Industrial Bipartit & Mediasi (Kasus)
+    // 10. Hubungan Industrial Bipartit & Mediasi (Kasus)
     TEMPLATE_DEFINITIONS.bipartit.sheets.forEach((s) => {
       const ws = XLSX.utils.aoa_to_sheet(s.rows)
       ws["!cols"] = autoFitColumns(s.rows, 14)
       XLSX.utils.book_append_sheet(wb, ws, s.sheetName.substring(0, 31))
     })
 
-    // 12. Monitoring Rekrutmen & KPI Dashboard Completion 2026
+    // 11. Monitoring Rekrutmen & KPI Dashboard Completion 2026
     const wsRecruit = XLSX.utils.aoa_to_sheet(RECRUITMENT_KPI_TEMPLATE_ROWS)
     wsRecruit["!cols"] = autoFitColumns(RECRUITMENT_KPI_TEMPLATE_ROWS, 15)
     XLSX.utils.book_append_sheet(wb, wsRecruit, "Recruitment_KPI")

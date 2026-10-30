@@ -17,28 +17,34 @@ import { ExecutiveHeroMetrics } from "../../components/dashboard/ExecutiveHeroMe
 import { Phase1VisualCharts } from "../../components/dashboard/Phase1VisualCharts"
 import { Phase1MetricsTable } from "../../components/dashboard/Phase1MetricsTable"
 import { QuickActionsModal } from "../../components/ui/QuickActionsModal"
-import { useDashboardSummary, useDivisions, useDepartments } from "../../hooks/use-dashboard"
+import {
+  useDashboardSummary,
+  useDivisions,
+  useDepartments,
+  useReportingPeriods,
+} from "../../hooks/use-dashboard"
 
 const MONTHS = [
-  { id: "1", label: "01 - Januari" },
-  { id: "2", label: "02 - Februari" },
-  { id: "3", label: "03 - Maret" },
-  { id: "4", label: "04 - April" },
-  { id: "5", label: "05 - Mei" },
-  { id: "6", label: "06 - Juni" },
-  { id: "7", label: "07 - Juli (Aktif)" },
-  { id: "8", label: "08 - Agustus" },
-  { id: "9", label: "09 - September" },
-  { id: "10", label: "10 - Oktober" },
-  { id: "11", label: "11 - November" },
-  { id: "12", label: "12 - Desember" },
+  { id: "1", label: "01 - Januari", name: "Januari" },
+  { id: "2", label: "02 - Februari", name: "Februari" },
+  { id: "3", label: "03 - Maret", name: "Maret" },
+  { id: "4", label: "04 - April", name: "April" },
+  { id: "5", label: "05 - Mei", name: "Mei" },
+  { id: "6", label: "06 - Juni", name: "Juni" },
+  { id: "7", label: "07 - Juli", name: "Juli" },
+  { id: "8", label: "08 - Agustus", name: "Agustus" },
+  { id: "9", label: "09 - September", name: "September" },
+  { id: "10", label: "10 - Oktober", name: "Oktober" },
+  { id: "11", label: "11 - November", name: "November" },
+  { id: "12", label: "12 - Desember", name: "Desember" },
 ]
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<"visual" | "matrix" | "both">("both")
   const [selectedYear, setSelectedYear] = useState<"2026" | "2025" | "2024">("2026")
-  const [selectedMonth, setSelectedMonth] = useState<string>("7")
+  const [selectedMonth, setSelectedMonth] = useState<string>("9")
+  const [userManuallyPickedMonth, setUserManuallyPickedMonth] = useState(false)
   const [selectedScope, setSelectedScope] = useState<"corporate" | "hq" | "store">("corporate")
   const [departmentFilter, setDepartmentFilter] = useState("Semua Departemen")
   const [divisionFilter, setDivisionFilter] = useState("Semua Divisi")
@@ -51,6 +57,31 @@ export const DashboardPage: React.FC = () => {
   const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false)
   const yearDropdownRef = useRef<HTMLDivElement>(null)
   const monthDropdownRef = useRef<HTMLDivElement>(null)
+
+  const { data: reportingPeriods } = useReportingPeriods()
+
+  const availableMonthsSet = useMemo(() => {
+    const yr = Number(selectedYear)
+    const set = new Set<string>()
+    ;(reportingPeriods || []).forEach((p) => {
+      if (Number(p.year) === yr && p.month) {
+        set.add(String(p.month))
+      }
+    })
+    return set
+  }, [reportingPeriods, selectedYear])
+
+  useEffect(() => {
+    if (userManuallyPickedMonth || availableMonthsSet.size === 0) return
+    if (!availableMonthsSet.has(selectedMonth)) {
+      const sorted = Array.from(availableMonthsSet)
+        .map(Number)
+        .sort((a, b) => b - a)
+      if (sorted.length > 0) {
+        setSelectedMonth(String(sorted[0]))
+      }
+    }
+  }, [availableMonthsSet, selectedMonth, userManuallyPickedMonth])
 
   const {
     data: dashboardResponse,
@@ -68,6 +99,9 @@ export const DashboardPage: React.FC = () => {
       await queryClient.invalidateQueries({
         queryKey: ["dashboardSummary"],
       })
+      await queryClient.invalidateQueries({
+        queryKey: ["reportingPeriods"],
+      })
       await Promise.all([
         refetch(),
         new Promise((resolve) => setTimeout(resolve, 500)),
@@ -80,10 +114,23 @@ export const DashboardPage: React.FC = () => {
   const showLoading = isLoading || isManualReloading
 
   const hasData = useMemo(() => {
-    if (!dashboardResponse) return false;
-    const hc = dashboardResponse.summary?.demographics?.totalHeadcount || 0;
-    return hc > 0;
-  }, [dashboardResponse]);
+    if (!dashboardResponse) return false
+    const hc = dashboardResponse.summary?.demographics?.totalHeadcount || 0
+    const attCount =
+      (dashboardResponse.summary?.attendanceByScope?.hq?.totalEmployees || 0) +
+      (dashboardResponse.summary?.attendanceByScope?.store?.totalEmployees || 0)
+    const sales = dashboardResponse.summary?.productivity?.totalSales || 0
+    const sp = dashboardResponse.industrialAndSp?.totalSpIssued || 0
+    const comp =
+      dashboardResponse.compliance?.kpi?.total ||
+      dashboardResponse.industrialAndSp?.compliancePermits?.kpi?.total ||
+      0
+    const turnover =
+      dashboardResponse.turnoverAndRetention?.overview?.kpi?.monthlyTurnover ||
+      (dashboardResponse.turnoverAndRetention as any)?.overview?.kpi?.totalYtd ||
+      0
+    return hc > 0 || attCount > 0 || sales > 0 || sp > 0 || comp > 0 || turnover > 0
+  }, [dashboardResponse])
 
   const { data: divisionsData } = useDivisions()
   const { data: departmentsData } = useDepartments()
@@ -170,8 +217,9 @@ export const DashboardPage: React.FC = () => {
     setTimeout(() => setToastMessage(null), 4000)
   }
 
-  const selectedMonthLabel =
-    MONTHS.find((m) => m.id === selectedMonth)?.label || `Bulan ${selectedMonth}`
+  const selectedMonthObj = MONTHS.find((m) => m.id === selectedMonth)
+  const selectedMonthLabel = selectedMonthObj?.label || `Bulan ${selectedMonth}`
+  const selectedMonthName = selectedMonthObj?.name || `Bulan ${selectedMonth}`
 
   return (
     <div className="space-y-6">
@@ -222,26 +270,39 @@ export const DashboardPage: React.FC = () => {
             </button>
 
             {isMonthDropdownOpen && (
-              <div className="absolute right-0 sm:left-0 sm:right-auto mt-1.5 w-48 max-h-64 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100">
-                {MONTHS.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedMonth(m.id)
-                      setIsMonthDropdownOpen(false)
-                    }}
-                    className={`w-full flex items-center justify-between px-3.5 py-2 text-xs font-medium transition-colors text-left cursor-pointer ${selectedMonth === m.id
-                      ? "bg-slate-900 text-white font-bold"
-                      : "text-slate-700 hover:bg-slate-50"
-                      }`}
-                  >
-                    <span>{m.label}</span>
-                    {selectedMonth === m.id && (
-                      <Check className="w-3.5 h-3.5 text-white" />
-                    )}
-                  </button>
-                ))}
+              <div className="absolute right-0 sm:left-0 sm:right-auto mt-1.5 w-52 max-h-64 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100">
+                {MONTHS.map((m) => {
+                  const isAvailable = availableMonthsSet.has(m.id)
+                  const isSelected = selectedMonth === m.id
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedMonth(m.id)
+                        setUserManuallyPickedMonth(true)
+                        setIsMonthDropdownOpen(false)
+                      }}
+                      className={`w-full flex items-center justify-between px-3.5 py-2 text-xs font-medium transition-colors text-left cursor-pointer ${isSelected
+                        ? "bg-slate-900 text-white font-bold"
+                        : "text-slate-700 hover:bg-slate-50"
+                        }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span>{m.label}</span>
+                        {isAvailable && (
+                          <span
+                            className={`w-2 h-2 rounded-full ${isSelected ? "bg-emerald-400" : "bg-emerald-500"}`}
+                            title="Data periode tersedia"
+                          />
+                        )}
+                      </span>
+                      {isSelected && (
+                        <Check className="w-3.5 h-3.5 text-white" />
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -270,6 +331,7 @@ export const DashboardPage: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setSelectedYear(year)
+                      setUserManuallyPickedMonth(false)
                       setIsYearDropdownOpen(false)
                     }}
                     className={`w-full flex items-center justify-between px-3.5 py-2 text-sm font-mono transition-colors text-left cursor-pointer ${selectedYear === year
@@ -492,10 +554,10 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div className="space-y-1">
             <h3 className="text-lg font-black text-slate-900 font-heading">
-              Data Belum Tersedia
+              Data Belum Tersedia untuk {selectedMonthName} {selectedYear}
             </h3>
             <p className="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
-              silahkan import terlebih dahulu untuk menampilkan data
+              Silakan pilih bulan yang bertanda aktif pada pilihan periode atau impor berkas Excel terlebih dahulu untuk menampilkan data.
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
@@ -527,6 +589,8 @@ export const DashboardPage: React.FC = () => {
           {activeTab === "visual" && (
             <Phase1VisualCharts
               selectedYear={selectedYear}
+              selectedMonth={selectedMonth}
+              selectedMonthName={selectedMonthName}
               selectedScope={selectedScope}
               dashboardData={dashboardResponse}
               divisionFilter={divisionFilter}
@@ -548,6 +612,8 @@ export const DashboardPage: React.FC = () => {
             <div className="space-y-8">
               <Phase1VisualCharts
                 selectedYear={selectedYear}
+                selectedMonth={selectedMonth}
+                selectedMonthName={selectedMonthName}
                 selectedScope={selectedScope}
                 dashboardData={dashboardResponse}
                 divisionFilter={divisionFilter}
