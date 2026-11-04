@@ -1,5 +1,5 @@
 export interface Phase1Metric {
-  no: number;
+  no: number | string;
   category: 
     | 'Employee Demografi' 
     | 'Employee Level' 
@@ -185,11 +185,11 @@ export const phase1Metrics: Phase1Metric[] = [
     statusLabel: '-'
   },
   {
-    no: 11,
+    no: '11.1',
     category: 'Employee Level',
-    name: 'BOD+ (Board of Directors)',
+    name: 'Direktur/CEO',
     formulae: 'Headcount',
-    target: 'As per Budget (Struktur Ramping)',
+    target: 'As per Budget (Struktur Ramping: 1 Orang)',
     totalCorporate: 0,
     hq: 0,
     store: 0,
@@ -201,7 +201,23 @@ export const phase1Metrics: Phase1Metric[] = [
     statusLabel: '-'
   },
   {
-    no: 12,
+    no: '11.2',
+    category: 'Employee Level',
+    name: 'GM/VP',
+    formulae: 'Headcount',
+    target: 'As per Budget',
+    totalCorporate: 0,
+    hq: 0,
+    store: 0,
+    unit: 'number',
+    formattedCorporate: '-',
+    formattedHQ: '-',
+    formattedStore: '-',
+    status: 'neutral',
+    statusLabel: '-'
+  },
+  {
+    no: '11.3',
     category: 'Employee Level',
     name: 'Manager',
     formulae: 'Headcount',
@@ -217,9 +233,9 @@ export const phase1Metrics: Phase1Metric[] = [
     statusLabel: '-'
   },
   {
-    no: 13,
+    no: '11.4',
     category: 'Employee Level',
-    name: 'Associate Manager',
+    name: 'Asst Man',
     formulae: 'Headcount',
     target: 'As per Budget',
     totalCorporate: 0,
@@ -233,9 +249,9 @@ export const phase1Metrics: Phase1Metric[] = [
     statusLabel: '-'
   },
   {
-    no: 14,
+    no: '11.5',
     category: 'Employee Level',
-    name: 'Lead / Head of Division/Dept',
+    name: 'Head',
     formulae: 'Headcount',
     target: 'As per Budget',
     totalCorporate: 0,
@@ -249,9 +265,9 @@ export const phase1Metrics: Phase1Metric[] = [
     statusLabel: '-'
   },
   {
-    no: 15,
+    no: '11.6',
     category: 'Employee Level',
-    name: 'Associate Lead / Supervisor',
+    name: 'Asst Head',
     formulae: 'Headcount',
     target: 'As per Budget',
     totalCorporate: 0,
@@ -265,9 +281,57 @@ export const phase1Metrics: Phase1Metric[] = [
     statusLabel: '-'
   },
   {
-    no: 16,
+    no: '11.7',
     category: 'Employee Level',
-    name: 'Team Leader (Store Leader)',
+    name: 'Leader',
+    formulae: 'Headcount',
+    target: 'As per Budget',
+    totalCorporate: 0,
+    hq: 0,
+    store: 0,
+    unit: 'number',
+    formattedCorporate: '-',
+    formattedHQ: '-',
+    formattedStore: '-',
+    status: 'neutral',
+    statusLabel: '-'
+  },
+  {
+    no: '11.8',
+    category: 'Employee Level',
+    name: 'Staff',
+    formulae: 'Headcount',
+    target: 'As per Budget',
+    totalCorporate: 0,
+    hq: 0,
+    store: 0,
+    unit: 'number',
+    formattedCorporate: '-',
+    formattedHQ: '-',
+    formattedStore: '-',
+    status: 'neutral',
+    statusLabel: '-'
+  },
+  {
+    no: '11.9',
+    category: 'Employee Level',
+    name: 'Operator',
+    formulae: 'Headcount',
+    target: 'As per Budget',
+    totalCorporate: 0,
+    hq: 0,
+    store: 0,
+    unit: 'number',
+    formattedCorporate: '-',
+    formattedHQ: '-',
+    formattedStore: '-',
+    status: 'neutral',
+    statusLabel: '-'
+  },
+  {
+    no: '11.10',
+    category: 'Employee Level',
+    name: 'Store Leader',
     formulae: 'Headcount',
     target: '1 Leader per Store Unit',
     totalCorporate: 0,
@@ -281,9 +345,57 @@ export const phase1Metrics: Phase1Metric[] = [
     statusLabel: '-'
   },
   {
-    no: 17,
+    no: '11.11',
     category: 'Employee Level',
-    name: 'Staff / Crew / Cashier / SA',
+    name: 'Asst Store Leader',
+    formulae: 'Headcount',
+    target: 'As per Store Capacity',
+    totalCorporate: 0,
+    hq: 0,
+    store: 0,
+    unit: 'number',
+    formattedCorporate: '-',
+    formattedHQ: '-',
+    formattedStore: '-',
+    status: 'neutral',
+    statusLabel: '-'
+  },
+  {
+    no: '11.12',
+    category: 'Employee Level',
+    name: 'Kasir',
+    formulae: 'Headcount',
+    target: 'As per Store Capacity',
+    totalCorporate: 0,
+    hq: 0,
+    store: 0,
+    unit: 'number',
+    formattedCorporate: '-',
+    formattedHQ: '-',
+    formattedStore: '-',
+    status: 'neutral',
+    statusLabel: '-'
+  },
+  {
+    no: '11.13',
+    category: 'Employee Level',
+    name: 'Vm Store',
+    formulae: 'Headcount',
+    target: 'As per Store Capacity',
+    totalCorporate: 0,
+    hq: 0,
+    store: 0,
+    unit: 'number',
+    formattedCorporate: '-',
+    formattedHQ: '-',
+    formattedStore: '-',
+    status: 'neutral',
+    statusLabel: '-'
+  },
+  {
+    no: '11.14',
+    category: 'Employee Level',
+    name: 'Sales Advisor',
     formulae: 'Headcount',
     target: 'As per Store Capacity',
     totalCorporate: 0,

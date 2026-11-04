@@ -255,10 +255,14 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
         };
       }
 
-      if (m.no === 11) {
-        const cVal = corp?.byLevelStandard?.bodPlus || 0;
-        const hVal = hq?.byLevelStandard?.bodPlus || 0;
-        const sVal = store?.byLevelStandard?.bodPlus || 0;
+      if (m.category === 'Employee Level') {
+        const levelName = m.name;
+        const cVal = corp?.byEmployeeLevel14?.[levelName] ?? (Array.isArray(apiDemo?.distribution?.byEmployeeLevel) ? (apiDemo.distribution.byEmployeeLevel.find((x: any) => x.level === levelName)?.count ?? 0) : 0);
+        const hVal = hq?.byEmployeeLevel14?.[levelName] ?? 0;
+        const sVal = store?.byEmployeeLevel14?.[levelName] ?? 0;
+        let lbl = 'Sesuai Budget';
+        if (levelName === 'Direktur/CEO') lbl = 'Ramping';
+        else if (levelName.includes('Store') || levelName === 'Kasir' || levelName === 'Sales Advisor' || levelName === 'Vm Store') lbl = 'Sesuai Toko';
         return {
           ...m,
           totalCorporate: cVal,
@@ -268,109 +272,7 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
           formattedHQ: `${hVal} Orang`,
           formattedStore: `${sVal} Orang`,
           status: 'optimal',
-          statusLabel: 'Ramping',
-        };
-      }
-
-      if (m.no === 12) {
-        const cVal = corp?.byLevelStandard?.manager || 0;
-        const hVal = hq?.byLevelStandard?.manager || 0;
-        const sVal = store?.byLevelStandard?.manager || 0;
-        return {
-          ...m,
-          totalCorporate: cVal,
-          hq: hVal,
-          store: sVal,
-          formattedCorporate: `${cVal} Orang`,
-          formattedHQ: `${hVal} Orang`,
-          formattedStore: `${sVal} Orang`,
-          status: 'optimal',
-          statusLabel: 'Sesuai Budget',
-        };
-      }
-
-      if (m.no === 13) {
-        const cVal = corp?.byLevelStandard?.associateManager || 0;
-        const hVal = hq?.byLevelStandard?.associateManager || 0;
-        const sVal = store?.byLevelStandard?.associateManager || 0;
-        return {
-          ...m,
-          totalCorporate: cVal,
-          hq: hVal,
-          store: sVal,
-          formattedCorporate: `${cVal} Orang`,
-          formattedHQ: `${hVal} Orang`,
-          formattedStore: `${sVal} Orang`,
-          status: 'optimal',
-          statusLabel: 'Sesuai Budget',
-        };
-      }
-
-      if (m.no === 14) {
-        const cVal = corp?.byLevelStandard?.lead || 0;
-        const hVal = hq?.byLevelStandard?.lead || 0;
-        const sVal = store?.byLevelStandard?.lead || 0;
-        return {
-          ...m,
-          totalCorporate: cVal,
-          hq: hVal,
-          store: sVal,
-          formattedCorporate: `${cVal} Orang`,
-          formattedHQ: `${hVal} Orang`,
-          formattedStore: `${sVal} Orang`,
-          status: 'optimal',
-          statusLabel: 'Sesuai Budget',
-        };
-      }
-
-      if (m.no === 15) {
-        const cVal = corp?.byLevelStandard?.associateLead || 0;
-        const hVal = hq?.byLevelStandard?.associateLead || 0;
-        const sVal = store?.byLevelStandard?.associateLead || 0;
-        return {
-          ...m,
-          totalCorporate: cVal,
-          hq: hVal,
-          store: sVal,
-          formattedCorporate: `${cVal} Orang`,
-          formattedHQ: `${hVal} Orang`,
-          formattedStore: `${sVal} Orang`,
-          status: 'optimal',
-          statusLabel: 'Sesuai Budget',
-        };
-      }
-
-      if (m.no === 16) {
-        const cVal = corp?.byLevelStandard?.teamLeader || 0;
-        const hVal = hq?.byLevelStandard?.teamLeader || 0;
-        const sVal = store?.byLevelStandard?.teamLeader || 0;
-        return {
-          ...m,
-          totalCorporate: cVal,
-          hq: hVal,
-          store: sVal,
-          formattedCorporate: `${cVal} Orang`,
-          formattedHQ: `${hVal} Orang`,
-          formattedStore: `${sVal} Orang`,
-          status: 'optimal',
-          statusLabel: 'Sesuai Toko',
-        };
-      }
-
-      if (m.no === 17) {
-        const cVal = corp?.byLevelStandard?.staffCrew || 0;
-        const hVal = hq?.byLevelStandard?.staffCrew || 0;
-        const sVal = store?.byLevelStandard?.staffCrew || 0;
-        return {
-          ...m,
-          totalCorporate: cVal,
-          hq: hVal,
-          store: sVal,
-          formattedCorporate: `${cVal} Orang`,
-          formattedHQ: `${hVal} Orang`,
-          formattedStore: `${sVal} Orang`,
-          status: 'optimal',
-          statusLabel: 'Optimal',
+          statusLabel: lbl,
         };
       }
 
@@ -1010,7 +912,7 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
     })
     .sort((a, b) => {
       if (sortField === 'no') {
-        return sortDirection === 'asc' ? a.no - b.no : b.no - a.no;
+        return sortDirection === 'asc' ? parseFloat(String(a.no)) - parseFloat(String(b.no)) : parseFloat(String(b.no)) - parseFloat(String(a.no));
       }
       if (sortField === 'name') {
         return sortDirection === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name);
@@ -1104,7 +1006,7 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
         <table className="w-full text-left text-sm">
           <thead className="bg-[#f8fafc] text-slate-700 uppercase text-xs font-bold tracking-wider border-b border-slate-200">
             <tr>
-              <th className="py-3.5 px-3 font-mono font-bold w-12 text-center">NO</th>
+              {/* <th className="py-3.5 px-3 font-mono font-bold w-12 text-center">NO</th> */}
               <th className="py-3.5 px-4 font-bold min-w-[200px]">NAMA METRIK</th>
               <th className="py-3.5 px-3 font-bold min-w-[140px]">KATEGORI</th>
               <th className="py-3.5 px-3 font-bold min-w-[180px]">FORMULA</th>
@@ -1136,9 +1038,9 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
                 key={metric.no}
                 className="hover:bg-slate-50/80 transition-colors group"
               >
-                <td className="py-3 px-3 font-mono font-bold text-slate-600 text-center tabular-nums">
+                {/* <td className="py-3 px-3 font-mono font-bold text-slate-600 text-center tabular-nums">
                   {metric.no}
-                </td>
+                </td> */}
 
                 <td className="py-3 px-4">
                   <div className="font-semibold text-slate-900 text-sm">
@@ -1227,7 +1129,7 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
 
       <div className="p-4 border-t border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm text-slate-600 font-mono">
         <div>
-          Menampilkan <span className="font-bold text-slate-800 tabular-nums">{filteredMetrics.length}</span> dari <span className="font-bold text-slate-800 tabular-nums">{phase1Metrics.length}</span> metrik baku
+          {/* Menampilkan <span className="font-bold text-slate-800 tabular-nums">{filteredMetrics.length}</span> dari <span className="font-bold text-slate-800 tabular-nums">{phase1Metrics.length}</span> metrik baku */}
         </div>
         <div className="flex items-center gap-3 text-xs font-semibold">
           <span className="flex items-center gap-1.5 text-emerald-700">

@@ -73,7 +73,31 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
   const dynamicHqHeadcount = apiDemo?.hqHeadcount || 0;
   const totalHeadcount = apiDemo?.totalHeadcount || 0;
 
-  const headcountCategories = ['2024', '2025', `${selectedYear} (${MONTH_SHORT[activePeriodMonthNum - 1] || 'Aktif'})`];
+  const rawTrajectory = (dashboardData as any)?.headcountTrajectory ||
+    (dashboardData?.summary as any)?.headcountTrajectory ||
+    (apiDemo as any)?.headcountTrajectory ||
+    [];
+
+  const trajectoryItems = Array.isArray(rawTrajectory) && rawTrajectory.length > 0
+    ? [...rawTrajectory].sort((a: any, b: any) => Number(a.year) - Number(b.year))
+    : [
+        { year: 2024, month: activePeriodMonthNum, store: 0, hq: 0, total: 0 },
+        { year: 2025, month: activePeriodMonthNum, store: 0, hq: 0, total: 0 },
+        { year: activePeriodYear, month: activePeriodMonthNum, store: dynamicStoreHeadcount, hq: dynamicHqHeadcount, total: totalHeadcount }
+      ];
+
+  const minTrajectoryYear = trajectoryItems[0]?.year || 2024;
+  const maxTrajectoryYear = trajectoryItems[trajectoryItems.length - 1]?.year || activePeriodYear;
+  const trajectoryTitle = minTrajectoryYear === maxTrajectoryYear
+    ? `Trajektori Headcount (${minTrajectoryYear})`
+    : `Trajektori Headcount (${minTrajectoryYear} – ${maxTrajectoryYear})`;
+
+  const headcountCategories = trajectoryItems.map((item: any) => {
+    const isCurrent = Number(item.year) === Number(activePeriodYear);
+    const mLabel = MONTH_SHORT[Number(item.month) - 1] || `Bln ${item.month}`;
+    return isCurrent ? `${item.year} (${mLabel} Aktif)` : `${item.year} (${mLabel})`;
+  });
+
   const headcountChartOptions: ApexCharts.ApexOptions = {
     chart: {
       type: 'bar',
@@ -134,8 +158,8 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
   };
 
   const headcountSeries = [
-    { name: 'Store Network', data: [0, 0, dynamicStoreHeadcount] },
-    { name: 'Head Office (HQ)', data: [0, 0, dynamicHqHeadcount] }
+    { name: 'Store Network', data: trajectoryItems.map((item: any) => Number(item.store || 0)) },
+    { name: 'Head Office (HQ)', data: trajectoryItems.map((item: any) => Number(item.hq || 0)) }
   ];
 
   let displayCostItems = apiProd?.costByDivision && Array.isArray(apiProd.costByDivision) ? apiProd.costByDivision : [];
@@ -820,7 +844,7 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-slate-700" />
                 <h3 className="text-base font-bold text-slate-900 tracking-tight font-heading">
-                  Trajektori Headcount (2024 – 2026)
+                  {trajectoryTitle}
                 </h3>
               </div>
               <span className="text-xs font-mono font-semibold text-slate-600">
@@ -833,19 +857,37 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2.5 pt-3.5 mt-2 border-t border-slate-100 text-center">
-            <div className="bg-slate-50 p-2.5 rounded-xl">
-              <span className="text-xs text-slate-500 uppercase font-semibold block mb-0.5">2024 Basis</span>
-              <span className="text-base font-bold font-mono text-slate-900 tabular-nums">0</span>
-            </div>
-            <div className="bg-slate-50 p-2.5 rounded-xl">
-              <span className="text-xs text-slate-500 uppercase font-semibold block mb-0.5">2025 Konsolidasi</span>
-              <span className="text-base font-bold font-mono text-slate-900 tabular-nums">0</span>
-            </div>
-            <div className="bg-blue-50/60 p-2.5 rounded-xl border border-blue-100">
-              <span className="text-xs text-blue-700 uppercase font-bold block mb-0.5">{activePeriodLabel}</span>
-              <span className="text-base font-bold font-mono text-blue-900 tabular-nums">{totalHeadcount.toLocaleString()}</span>
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 pt-3.5 mt-2 border-t border-slate-100 text-center">
+            {trajectoryItems.map((item: any, idx: number) => {
+              const isCurrent = Number(item.year) === Number(activePeriodYear);
+              const mLabel = MONTH_SHORT[Number(item.month) - 1] || '';
+              let badgeLabel = `${item.year} (${mLabel})`;
+              if (idx === 0) badgeLabel = `${item.year} Basis`;
+              else if (idx === trajectoryItems.length - 1 && isCurrent) badgeLabel = `${item.year} Aktif (${mLabel})`;
+              else if (idx === 1 && trajectoryItems.length >= 3) badgeLabel = `${item.year} Konsolidasi`;
+
+              return (
+                <div
+                  key={`${item.year}-${item.month}`}
+                  className={`p-2.5 rounded-xl ${
+                    isCurrent
+                      ? 'bg-blue-50/60 border border-blue-100'
+                      : 'bg-slate-50'
+                  }`}
+                >
+                  <span className={`text-xs uppercase font-semibold block mb-0.5 ${
+                    isCurrent ? 'text-blue-700 font-bold' : 'text-slate-500'
+                  }`}>
+                    {badgeLabel}
+                  </span>
+                  <span className={`text-base font-bold font-mono tabular-nums ${
+                    isCurrent ? 'text-blue-900' : 'text-slate-900'
+                  }`}>
+                    {Number(item.total || 0).toLocaleString()}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
