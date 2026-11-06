@@ -410,8 +410,10 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
 
       if (m.no === 26) {
         const cDisp = apiSp?.disputes?.corporate?.total || 0;
+        const cSelesai = apiSp?.disputes?.corporate?.selesai || 0;
         const hDisp = apiSp?.disputes?.hq?.total || 0;
         const sDisp = apiSp?.disputes?.store?.total || 0;
+        const isAllDone = cDisp > 0 && cSelesai === cDisp;
         return {
           ...m,
           totalCorporate: cDisp,
@@ -420,8 +422,8 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
           formattedCorporate: `${cDisp} Kasus (Bipartit/Mediasi)`,
           formattedHQ: `${hDisp} Kasus`,
           formattedStore: `${sDisp} Kasus`,
-          status: cDisp > 0 ? 'normal' : 'optimal',
-          statusLabel: cDisp > 0 ? 'Dalam Mediasi' : 'Zero Dispute',
+          status: cDisp === 0 ? 'optimal' : isAllDone ? 'optimal' : 'normal',
+          statusLabel: cDisp === 0 ? 'Zero Dispute' : isAllDone ? 'Selesai' : 'Dalam Proses',
         };
       }
 
@@ -870,17 +872,18 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
         const dHq = apiSp?.disputes?.hq?.total || 0;
         const dStore = apiSp?.disputes?.store?.total || 0;
         const dSelesai = apiSp?.disputes?.corporate?.selesai || 0;
+        const dProses = dCorp - dSelesai;
         const hasData = dCorp > 0;
         return {
           ...m,
           totalCorporate: dCorp,
           hq: dHq,
           store: dStore,
-          formattedCorporate: hasData ? `${dCorp} Kasus (${dSelesai} Selesai / ${dCorp - dSelesai} Mediasi)` : '-',
+          formattedCorporate: hasData ? `${dCorp} Kasus (${dSelesai} Selesai / ${dProses} Proses)` : '-',
           formattedHQ: dHq > 0 ? `${dHq} Kasus (HQ)` : '-',
           formattedStore: dStore > 0 ? `${dStore} Kasus (Store)` : '-',
-          status: hasData ? 'normal' : 'neutral',
-          statusLabel: hasData ? 'Terkendali' : 'Nihil',
+          status: hasData ? (dProses === 0 ? 'optimal' : 'normal') : 'neutral',
+          statusLabel: hasData ? (dProses === 0 ? 'Tuntas' : 'Dalam Proses') : 'Nihil',
         };
       }
 
