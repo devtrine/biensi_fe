@@ -113,10 +113,13 @@ export async function uploadToEndpoint(
     headers: { "Content-Type": "multipart/form-data" },
   })
 
+  const rawErrors = (data as any)?.errors || (data as any)?.errorList || (data as any)?.data?.errors || (data as any)?.data?.errorList
+  const errorsList = Array.isArray(rawErrors) ? rawErrors : []
+
   return {
     success: data?.success ?? true,
     message: data?.message || "File berhasil diproses oleh backend.",
-    errors: (data as any)?.errors,
+    errors: errorsList.length > 0 ? errorsList : undefined,
   }
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react"
+import React, { useState, useRef, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   UploadCloud,
@@ -15,6 +15,9 @@ import {
   Layers,
   HelpCircle,
   Download,
+  Copy,
+  CheckCheck,
+  ChevronDown,
 } from "lucide-react"
 import {
   IMPORT_MODULES,
@@ -31,6 +34,8 @@ export const ImportPage: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState<boolean>(false)
   const [clientValidationNotice, setClientValidationNotice] = useState<string | null>(null)
+  const [isCopied, setIsCopied] = useState<boolean>(false)
+  const [isFailureDetailsOpen, setIsFailureDetailsOpen] = useState<boolean>(true)
 
   const {
     mutate: runImport,
@@ -111,6 +116,33 @@ export const ImportPage: React.FC = () => {
       fileInputRef.current.value = ""
     }
   }
+
+  const allFailures = useMemo(() => {
+    if (!importResult) return []
+    const list: string[] = []
+    if (importResult.errors && Array.isArray(importResult.errors)) {
+      list.push(...importResult.errors)
+    }
+    if (importResult.results) {
+      for (const r of importResult.results) {
+        if (r.errors && Array.isArray(r.errors)) {
+          for (const err of r.errors) {
+            if (!list.includes(err)) list.push(err)
+          }
+        }
+      }
+    }
+    return list
+  }, [importResult])
+
+  const hasAnyFailure = useMemo(() => {
+    if (!importResult) return false
+    return (
+      allFailures.length > 0 ||
+      Boolean(importResult.results?.some((r) => !r.success || (r.errors && r.errors.length > 0))) ||
+      /Gagal:\s*[1-9]\d*/i.test(importResult.message || "")
+    )
+  }, [importResult, allFailures])
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`
@@ -343,11 +375,23 @@ export const ImportPage: React.FC = () => {
       {isSuccess && importResult && (
         <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/90 shadow-2xs space-y-6">
           <div className="text-center space-y-2">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center shadow-xs">
-              <CheckCircle2 className="w-8 h-8" />
+            <div
+              className={`w-14 h-14 rounded-2xl mx-auto flex items-center justify-center shadow-xs ${
+                hasAnyFailure
+                  ? "bg-amber-50 text-amber-600 border border-amber-200"
+                  : "bg-emerald-50 text-emerald-600 border border-emerald-200"
+              }`}
+            >
+              {hasAnyFailure ? (
+                <AlertTriangle className="w-8 h-8" />
+              ) : (
+                <CheckCircle2 className="w-8 h-8" />
+              )}
             </div>
             <h2 className="text-xl font-black text-slate-900 font-heading">
-              Impor Berhasil Diproses!
+              {hasAnyFailure
+                ? "Impor Selesai dengan Sebagian Gagal"
+                : "Impor Berhasil Diproses!"}
             </h2>
             <p className="text-xs text-slate-600 max-w-xl mx-auto">
               {importResult.message}
@@ -360,41 +404,164 @@ export const ImportPage: React.FC = () => {
                 Rincian Status:
               </span>
               <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 text-xs overflow-hidden">
-                {importResult.results.map((res, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${res.success ? "bg-white" : "bg-red-50/30"
-                      }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      {res.success ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-red-600 shrink-0" />
-                      )}
-                      <div>
-                        <span className="font-bold text-slate-900">
-                          {res.moduleLabel}
-                        </span>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          {res.message}
-                        </p>
-                      </div>
-                    </div>
+                {importResult.results.map((res, idx) => {
+                  const modHasError = Boolean(
+                    !res.success ||
+                    (res.errors && res.errors.length > 0) ||
+                    /Gagal:\s*[1-9]\d*/i.test(res.message || "")
+                  )
 
-                    <span
-                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold font-mono self-start sm:self-center ${res.success
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        : "bg-red-50 text-red-700 border border-red-200"
-                        }`}
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+                        !res.success
+                          ? "bg-red-50/30"
+                          : modHasError
+                            ? "bg-amber-50/20"
+                            : "bg-white"
+                      }`}
                     >
-                      {res.success ? "BERHASIL" : "GAGAL"}
-                    </span>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-2.5">
+                        {!res.success ? (
+                          <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+                        ) : modHasError ? (
+                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        )}
+                        <div>
+                          <span className="font-bold text-slate-900">
+                            {res.moduleLabel}
+                          </span>
+                          <p className="text-[11px] text-slate-500 mt-0.5">
+                            {res.message}
+                          </p>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-bold font-mono self-start sm:self-center ${
+                          !res.success
+                            ? "bg-red-50 text-red-700 border border-red-200"
+                            : modHasError
+                              ? "bg-amber-50 text-amber-800 border border-amber-300"
+                              : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        }`}
+                      >
+                        {!res.success
+                          ? "GAGAL"
+                          : modHasError
+                            ? `SEBAGIAN GAGAL (${res.errors?.length || 1} GAGAL)`
+                            : "BERHASIL"}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
+
+          {allFailures.length > 0 && (
+            <div className="rounded-xl border border-slate-200/90 bg-amber-50/40 shadow-2xs overflow-hidden transition-all duration-300 animate-alert-entrance">
+              {/* Header Bar */}
+              <div className="p-3 sm:px-4 flex items-center justify-between gap-2 border-b border-slate-200/90 bg-gradient-to-r from-amber-50/80 via-amber-50/40 to-transparent">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="relative flex items-center justify-center shrink-0">
+                    <span className="absolute w-2 h-2 rounded-full bg-amber-400 animate-ping opacity-75" />
+                    <AlertTriangle className="w-4 h-4 text-amber-600 relative z-10 shrink-0" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-900 truncate">
+                    Rincian Baris Gagal
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
+                    {allFailures.length} Catatan
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(allFailures.join("\n"))
+                      setIsCopied(true)
+                      setTimeout(() => setIsCopied(false), 2000)
+                    }}
+                    className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all duration-200 flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95 ${
+                      isCopied
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300"
+                    }`}
+                    title="Salin semua catatan kegagalan ke clipboard"
+                  >
+                    {isCopied ? (
+                      <>
+                        <CheckCheck className="w-3.5 h-3.5 text-emerald-600 animate-bounce" />
+                        <span>Tersalin!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Salin</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsFailureDetailsOpen(!isFailureDetailsOpen)}
+                    className="p-1 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-amber-100/60 transition-all cursor-pointer"
+                    title={isFailureDetailsOpen ? "Sembunyikan rincian" : "Tampilkan rincian"}
+                  >
+                    <ChevronDown
+                      className={`w-4 h-4 transition-transform duration-200 ${
+                        isFailureDetailsOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Collapsible Content */}
+              <div
+                className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                  isFailureDetailsOpen
+                    ? "max-h-60 opacity-100"
+                    : "max-h-0 opacity-0"
+                }`}
+              >
+                <div className="p-3 sm:px-4 space-y-2">
+                  <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1 divide-y divide-amber-100/60">
+                    {allFailures.map((err, idx) => (
+                      <div
+                        key={idx}
+                        className="pt-1.5 first:pt-0 flex items-start gap-2 text-xs font-mono text-slate-800 hover:bg-amber-100/40 p-1.5 rounded-lg transition-all duration-150 group"
+                      >
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-200/80 text-amber-900 shrink-0 mt-0.5 group-hover:bg-amber-300 transition-colors">
+                          #{idx + 1}
+                        </span>
+                        <span className="leading-relaxed break-all group-hover:translate-x-0.5 transition-transform duration-150">
+                          {err}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-[11px] text-amber-800/80 pt-1.5 border-t border-slate-200/90 flex items-center gap-1.5">
+                    <span>
+                      Baris data lain yang valid telah berhasil disimpan ke database. Anda hanya perlu memperbaiki baris yang tercatat di atas jika ingin melakukan impor ulang.
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          
+
+          
+
+          
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3 border-t border-slate-100">
             <button
