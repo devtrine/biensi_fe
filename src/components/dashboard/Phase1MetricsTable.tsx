@@ -367,13 +367,36 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
       }
 
       if (m.no === 24) {
+        const cBpjs = corp?.bpjs;
+        const hBpjs = hq?.bpjs;
+        const sBpjs = store?.bpjs;
+
+        const cTotal = cBpjs?.total ?? corp?.headcount ?? 0;
+        const hTotal = hBpjs?.total ?? hq?.headcount ?? 0;
+        const sTotal = sBpjs?.total ?? store?.headcount ?? 0;
+
+        const fmtBpjs = (b: any, total: number) => {
+          if (!total || total === 0) return '-';
+          const reg = b?.registeredEither ?? total;
+          const regPct = total > 0 ? Number(((reg / total) * 100).toFixed(1)) : 0;
+          return `${regPct}% Terdaftar (${reg}/${total})`;
+        };
+
+        const unregRate = cBpjs?.unregisteredPct ?? 0;
+        const hasData = cTotal > 0;
+        const status = hasData ? (unregRate < 12 ? 'optimal' : 'alert') : 'neutral';
+        const statusLabel = hasData ? (unregRate < 12 ? 'Sangat Baik' : 'Perlu Perbaikan') : '-';
+
         return {
           ...m,
-          formattedCorporate: '100% Terdaftar',
-          formattedHQ: '100% Terdaftar',
-          formattedStore: '100% Terdaftar',
-          status: 'optimal',
-          statusLabel: 'Sangat Baik',
+          totalCorporate: cBpjs?.registeredPct ?? (cTotal > 0 ? 100 : 0),
+          hq: hBpjs?.registeredPct ?? (hTotal > 0 ? 100 : 0),
+          store: sBpjs?.registeredPct ?? (sTotal > 0 ? 100 : 0),
+          formattedCorporate: fmtBpjs(cBpjs, cTotal),
+          formattedHQ: fmtBpjs(hBpjs, hTotal),
+          formattedStore: sTotal > 0 ? fmtBpjs(sBpjs, sTotal) : '-',
+          status,
+          statusLabel,
         };
       }
 
