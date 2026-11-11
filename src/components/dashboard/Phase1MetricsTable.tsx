@@ -366,7 +366,7 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
         };
       }
 
-      if (m.no === 24) {
+      if (m.no === 24 || m.no === '24') {
         const cBpjs = corp?.bpjs;
         const hBpjs = hq?.bpjs;
         const sBpjs = store?.bpjs;
@@ -375,11 +375,13 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
         const hTotal = hBpjs?.total ?? hq?.headcount ?? 0;
         const sTotal = sBpjs?.total ?? store?.headcount ?? 0;
 
-        const fmtBpjs = (b: any, total: number) => {
+        const fmtBpjsBoth = (b: any, total: number) => {
           if (!total || total === 0) return '-';
-          const reg = b?.registeredEither ?? total;
-          const regPct = total > 0 ? Number(((reg / total) * 100).toFixed(1)) : 0;
-          return `${regPct}% Terdaftar (${reg}/${total})`;
+          const regTk = b?.ketenagakerjaan?.registered ?? b?.registeredTK ?? b?.registeredEither ?? total;
+          const regKes = b?.kesehatan?.registered ?? b?.registeredKes ?? b?.registeredEither ?? total;
+          const tkPct = total > 0 ? Number(((regTk / total) * 100).toFixed(1)) : 0;
+          const kesPct = total > 0 ? Number(((regKes / total) * 100).toFixed(1)) : 0;
+          return `TK: ${tkPct}% (${regTk}/${total})\nKes: ${kesPct}% (${regKes}/${total})`;
         };
 
         const unregRate = cBpjs?.unregisteredPct ?? 0;
@@ -392,9 +394,77 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
           totalCorporate: cBpjs?.registeredPct ?? (cTotal > 0 ? 100 : 0),
           hq: hBpjs?.registeredPct ?? (hTotal > 0 ? 100 : 0),
           store: sBpjs?.registeredPct ?? (sTotal > 0 ? 100 : 0),
-          formattedCorporate: fmtBpjs(cBpjs, cTotal),
-          formattedHQ: fmtBpjs(hBpjs, hTotal),
-          formattedStore: sTotal > 0 ? fmtBpjs(sBpjs, sTotal) : '-',
+          formattedCorporate: fmtBpjsBoth(cBpjs, cTotal),
+          formattedHQ: fmtBpjsBoth(hBpjs, hTotal),
+          formattedStore: sTotal > 0 ? fmtBpjsBoth(sBpjs, sTotal) : '-',
+          status,
+          statusLabel,
+        };
+      }
+
+      if (m.no === '24.1') {
+        const cBpjs = corp?.bpjs;
+        const hBpjs = hq?.bpjs;
+        const sBpjs = store?.bpjs;
+
+        const cTotal = cBpjs?.total ?? corp?.headcount ?? 0;
+        const hTotal = hBpjs?.total ?? hq?.headcount ?? 0;
+        const sTotal = sBpjs?.total ?? store?.headcount ?? 0;
+
+        const fmtBpjsTK = (b: any, total: number) => {
+          if (!total || total === 0) return '-';
+          const regTk = b?.ketenagakerjaan?.registered ?? b?.registeredTK ?? b?.registeredEither ?? total;
+          const tkPct = total > 0 ? Number(((regTk / total) * 100).toFixed(1)) : 0;
+          return `${tkPct}% Terdaftar (${regTk}/${total})`;
+        };
+
+        const unregRateTK = cBpjs?.ketenagakerjaan?.unregisteredPct ?? cBpjs?.unregisteredTKPct ?? 0;
+        const hasData = cTotal > 0;
+        const status = hasData ? (unregRateTK < 12 ? 'optimal' : 'alert') : 'neutral';
+        const statusLabel = hasData ? (unregRateTK < 12 ? 'Sangat Baik' : 'Perlu Perbaikan') : '-';
+
+        return {
+          ...m,
+          totalCorporate: cBpjs?.ketenagakerjaan?.registeredPct ?? cBpjs?.registeredTKPct ?? (cTotal > 0 ? 100 : 0),
+          hq: hBpjs?.ketenagakerjaan?.registeredPct ?? hBpjs?.registeredTKPct ?? (hTotal > 0 ? 100 : 0),
+          store: sBpjs?.ketenagakerjaan?.registeredPct ?? sBpjs?.registeredTKPct ?? (sTotal > 0 ? 100 : 0),
+          formattedCorporate: fmtBpjsTK(cBpjs, cTotal),
+          formattedHQ: fmtBpjsTK(hBpjs, hTotal),
+          formattedStore: sTotal > 0 ? fmtBpjsTK(sBpjs, sTotal) : '-',
+          status,
+          statusLabel,
+        };
+      }
+
+      if (m.no === '24.2') {
+        const cBpjs = corp?.bpjs;
+        const hBpjs = hq?.bpjs;
+        const sBpjs = store?.bpjs;
+
+        const cTotal = cBpjs?.total ?? corp?.headcount ?? 0;
+        const hTotal = hBpjs?.total ?? hq?.headcount ?? 0;
+        const sTotal = sBpjs?.total ?? store?.headcount ?? 0;
+
+        const fmtBpjsKes = (b: any, total: number) => {
+          if (!total || total === 0) return '-';
+          const regKes = b?.kesehatan?.registered ?? b?.registeredKes ?? b?.registeredEither ?? total;
+          const kesPct = total > 0 ? Number(((regKes / total) * 100).toFixed(1)) : 0;
+          return `${kesPct}% Terdaftar (${regKes}/${total})`;
+        };
+
+        const unregRateKes = cBpjs?.kesehatan?.unregisteredPct ?? cBpjs?.unregisteredKesPct ?? 0;
+        const hasData = cTotal > 0;
+        const status = hasData ? (unregRateKes < 12 ? 'optimal' : 'alert') : 'neutral';
+        const statusLabel = hasData ? (unregRateKes < 12 ? 'Sangat Baik' : 'Perlu Perbaikan') : '-';
+
+        return {
+          ...m,
+          totalCorporate: cBpjs?.kesehatan?.registeredPct ?? cBpjs?.registeredKesPct ?? (cTotal > 0 ? 100 : 0),
+          hq: hBpjs?.kesehatan?.registeredPct ?? hBpjs?.registeredKesPct ?? (hTotal > 0 ? 100 : 0),
+          store: sBpjs?.kesehatan?.registeredPct ?? sBpjs?.registeredKesPct ?? (sTotal > 0 ? 100 : 0),
+          formattedCorporate: fmtBpjsKes(cBpjs, cTotal),
+          formattedHQ: fmtBpjsKes(hBpjs, hTotal),
+          formattedStore: sTotal > 0 ? fmtBpjsKes(sBpjs, sTotal) : '-',
           status,
           statusLabel,
         };
@@ -954,9 +1024,9 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
       `"${m.name}"`,
       `"${m.formulae}"`,
       `"${m.target}"`,
-      `"${m.formattedCorporate}"`,
-      `"${m.formattedHQ}"`,
-      `"${m.formattedStore}"`,
+      `"${String(m.formattedCorporate || '').replace(/\n/g, ' | ')}"`,
+      `"${String(m.formattedHQ || '').replace(/\n/g, ' | ')}"`,
+      `"${String(m.formattedStore || '').replace(/\n/g, ' | ')}"`,
       `"${m.statusLabel || ''}"`
     ]);
 
@@ -1069,7 +1139,7 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
                 </td> */}
 
                 <td className="py-3 px-4">
-                  <div className="font-semibold text-slate-900 text-sm">
+                  <div className={`font-semibold text-sm ${String(metric.no).startsWith('24.') ? 'pl-4 text-slate-700 font-medium' : 'text-slate-900'}`}>
                     {metric.name}
                   </div>
                   {metric.criticalQuest && (
@@ -1085,7 +1155,7 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
                   </span>
                 </td>
 
-                <td className="py-3 px-3 text-slate-700 font-mono text-xs leading-relaxed">
+                <td className="py-3 px-3 text-slate-700 font-mono text-xs leading-relaxed whitespace-pre-line">
                   {metric.formulae}
                 </td>
 
@@ -1096,21 +1166,21 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
                 </td>
 
                 <td
-                  className={`py-3 px-3 font-mono font-semibold text-slate-900 tabular-nums ${selectedScope === 'corporate' ? 'bg-blue-50/40 font-bold text-blue-900' : ''
+                  className={`py-3 px-3 font-mono font-semibold text-slate-900 tabular-nums whitespace-pre-line leading-relaxed ${selectedScope === 'corporate' ? 'bg-blue-50/40 font-bold text-blue-900' : ''
                     }`}
                 >
                   {metric.formattedCorporate}
                 </td>
 
                 <td
-                  className={`py-3 px-3 font-mono text-slate-800 tabular-nums ${selectedScope === 'hq' ? 'bg-blue-50/40 font-bold text-blue-900' : ''
+                  className={`py-3 px-3 font-mono text-slate-800 tabular-nums whitespace-pre-line leading-relaxed ${selectedScope === 'hq' ? 'bg-blue-50/40 font-bold text-blue-900' : ''
                     }`}
                 >
                   {metric.formattedHQ}
                 </td>
 
                 <td
-                  className={`py-3 px-3 font-mono text-slate-800 tabular-nums ${selectedScope === 'store' ? 'bg-blue-50/40 font-bold text-blue-900' : ''
+                  className={`py-3 px-3 font-mono text-slate-800 tabular-nums whitespace-pre-line leading-relaxed ${selectedScope === 'store' ? 'bg-blue-50/40 font-bold text-blue-900' : ''
                     }`}
                 >
                   {metric.formattedStore}
