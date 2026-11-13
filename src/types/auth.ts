@@ -1,3 +1,5 @@
+import type { RolePermissions } from "./administration"
+
 export interface User {
   id: string
   name: string
@@ -8,6 +10,7 @@ export interface User {
   photoUrl?: string
   isActive?: boolean
   createdAt?: string
+  permissions?: RolePermissions
 }
 
 export interface UserProfile {
@@ -17,6 +20,8 @@ export interface UserProfile {
   phoneNumber?: string
   photoUrl?: string
   role?: string
+  roleId?: number
+  permissions?: RolePermissions
 }
 
 export interface LoginPayload {

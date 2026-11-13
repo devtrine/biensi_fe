@@ -17,6 +17,9 @@ import { ExecutiveHeroMetrics } from "../../components/dashboard/ExecutiveHeroMe
 import { Phase1VisualCharts } from "../../components/dashboard/Phase1VisualCharts"
 import { Phase1MetricsTable } from "../../components/dashboard/Phase1MetricsTable"
 import { QuickActionsModal } from "../../components/ui/QuickActionsModal"
+import { AccessDeniedCard } from "../../components/ui/AccessDeniedCard"
+import { useCurrentUser } from "../../hooks/use-auth"
+import { hasPermission } from "../../lib/permissions"
 import {
   useDashboardSummary,
   useDivisions,
@@ -41,6 +44,11 @@ const MONTHS = [
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate()
+  const { data: currentUser } = useCurrentUser()
+  const canViewDashboard = hasPermission(currentUser, "dashboard", "view")
+  const canAccessImport =
+    hasPermission(currentUser, "import", "create") ||
+    hasPermission(currentUser, "import", "view")
   const [activeTab, setActiveTab] = useState<"visual" | "matrix" | "both">("both")
   const [selectedYear, setSelectedYear] = useState<"2026" | "2025" | "2024">("2026")
   const [selectedMonth, setSelectedMonth] = useState<string>("9")
@@ -87,6 +95,7 @@ export const DashboardPage: React.FC = () => {
     data: dashboardResponse,
     isLoading,
     isError,
+    error: dashboardError,
     refetch,
   } = useDashboardSummary(selectedYear, selectedScope, selectedMonth)
 
@@ -221,6 +230,18 @@ export const DashboardPage: React.FC = () => {
   const selectedMonthLabel = selectedMonthObj?.label || `Bulan ${selectedMonth}`
   const selectedMonthName = selectedMonthObj?.name || `Bulan ${selectedMonth}`
 
+  const isDashboardForbidden =
+    !canViewDashboard || (dashboardError as { response?: { status?: number } } | null)?.response?.status === 403
+
+  if (isDashboardForbidden) {
+    return (
+      <AccessDeniedCard
+        title="Akses Dashboard Terbatas"
+        description="Peran akun Anda tidak memiliki izin untuk melihat Dashboard Eksekutif & KPI."
+      />
+    )
+  }
+
   return (
     <div className="space-y-6">
       {toastMessage && (
@@ -243,14 +264,16 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => navigate("/import")}
-            className="flex items-center gap-2 px-3.5 py-2 bg-[#c8102e] hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow-xs cursor-pointer transition-all"
-          >
-            <UploadCloud className="w-4 h-4" />
-            <span>Impor Excel</span>
-          </button>
+          {canAccessImport && (
+            <button
+              type="button"
+              onClick={() => navigate("/import")}
+              className="flex items-center gap-2 px-3.5 py-2 bg-[#c8102e] hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow-xs cursor-pointer transition-all"
+            >
+              <UploadCloud className="w-4 h-4" />
+              <span>Impor Excel</span>
+            </button>
+          )}
 
           <div className="relative" ref={monthDropdownRef}>
             <button
@@ -552,13 +575,15 @@ export const DashboardPage: React.FC = () => {
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <button
-              onClick={() => navigate("/import")}
-              className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-[#c8102e] hover:bg-red-700 rounded-xl shadow-xs cursor-pointer transition-colors"
-            >
-              <UploadCloud className="w-4 h-4" />
-              <span>Impor Berkas Excel</span>
-            </button>
+            {canAccessImport && (
+              <button
+                onClick={() => navigate("/import")}
+                className="flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-[#c8102e] hover:bg-red-700 rounded-xl shadow-xs cursor-pointer transition-colors"
+              >
+                <UploadCloud className="w-4 h-4" />
+                <span>Impor Berkas Excel</span>
+              </button>
+            )}
             <button
               onClick={handleManualReload}
               className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 border border-red-500/40 rounded-xl cursor-pointer transition-colors"
