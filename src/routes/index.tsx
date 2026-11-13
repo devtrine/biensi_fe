@@ -6,6 +6,8 @@ import { DashboardLayout } from '../pages/dashboard/dashboard-layout'
 import { DashboardPage } from '../pages/dashboard/DashboardPage'
 import { ImportPage } from '../pages/import/ImportPage'
 import { SettingsPage } from '../pages/settings/SettingsPage'
+import { UsersPage } from '../pages/users/UsersPage'
+import { RolesPage } from '../pages/users/RolesPage'
 import { NotFoundPage } from '../pages/not-found-page'
 import { RequireAuth } from '../components/auth/require-auth'
 
@@ -26,6 +28,8 @@ export const AppRoutes: React.FC = () => {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/import" element={<ImportPage />} />
+        <Route path="/users" element={<UsersPage />} />
+        <Route path="/roles" element={<RolesPage />} />
         <Route path="/setting" element={<SettingsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
