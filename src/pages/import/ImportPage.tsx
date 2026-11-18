@@ -618,9 +618,9 @@ export const ImportPage: React.FC = () => {
               Kemungkinan Penyebab:
             </span>
             <ul className="list-disc list-inside text-slate-600 text-[11px] space-y-1 pl-1">
-              <li>Format lembar kerja tidak sesuai dengan templat <code className="font-mono">HR_Monitoring_Dashboard v2.0</code>.</li>
+              <li>Format lembar kerja tidak sesuai dengan templat</li>
               <li>Data kolom kunci (misalnya NIK, Nama, Tanggal, atau Kode Store) memiliki nilai kosong atau format tidak sesuai.</li>
-              <li>Sesi autentikasi telah berakhir.</li>
+              <li>Sesi login telah berakhir.</li>
             </ul>
           </div>
 

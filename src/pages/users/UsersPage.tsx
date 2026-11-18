@@ -22,7 +22,7 @@ import {
   useUsers,
 } from "../../hooks/use-administration"
 import { getErrorMessage } from "../../lib/api/client"
-import { hasPermission } from "../../lib/permissions"
+import { hasPermission, isSuperAdmin, isSuperAdminRole } from "../../lib/permissions"
 import type { AdminUser } from "../../types/administration"
 import { AccessDeniedCard } from "../../components/ui/AccessDeniedCard"
 
@@ -59,7 +59,7 @@ export const UsersPage: React.FC = () => {
   const canEditUsers = hasPermission(currentUser, "users", "edit")
   const canDeleteUsers = hasPermission(currentUser, "users", "delete")
   const canViewRoles = hasPermission(currentUser, "roles", "view")
-  const isCreatorSuperAdmin = currentUser?.roleId === 1
+  const isCreatorSuperAdmin = isSuperAdmin(currentUser)
 
   const { data: users = [], isLoading, isError, error, refetch } = useUsers(canViewUsers)
   const { data: roles = [] } = useRoles(canViewRoles)
@@ -122,7 +122,7 @@ export const UsersPage: React.FC = () => {
 
   const openCreateModal = () => {
     const defaultRole =
-      roleOptions.find((r) => (isCreatorSuperAdmin ? true : r.id !== 1))?.id ?? 4
+      roleOptions.find((r) => (isCreatorSuperAdmin ? true : !isSuperAdminRole(r.id, r.name)))?.id ?? 4
     setEditingUser(null)
     setFormName("")
     setFormEmail("")
@@ -510,7 +510,7 @@ export const UsersPage: React.FC = () => {
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:outline-hidden focus:border-red-500 cursor-pointer"
                   >
                     {roleOptions.map((r) => {
-                      const restrictedSuperAdmin = r.id === 1 && !isCreatorSuperAdmin
+                      const restrictedSuperAdmin = isSuperAdminRole(r.id, r.name) && !isCreatorSuperAdmin
                       return (
                         <option key={r.id} value={r.id} disabled={restrictedSuperAdmin}>
                           {r.name}{restrictedSuperAdmin ? " (Khusus Super Admin)" : ""}

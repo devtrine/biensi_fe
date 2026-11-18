@@ -317,9 +317,9 @@ export const RolesPage: React.FC = () => {
                   disabled={!canEditRoles}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 bg-slate-50/50 focus:bg-white focus:outline-hidden focus:border-red-500 disabled:opacity-70 cursor-pointer"
                 >
-                  <option value="READ_WRITE">READ_WRITE</option>
+                  <option value="READ_WRITE">READ WRITE</option>
                   <option value="READ">READ</option>
-                  <option value="RESTRICTED_READ">RESTRICTED_READ</option>
+                  <option value="RESTRICTED_READ">RESTRICTED READ</option>
                 </select>
               </div>
             </div>
