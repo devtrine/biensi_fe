@@ -9,8 +9,12 @@ import {
   Compass,
   HeartHandshake,
   ChevronDown,
-  Settings
+  Settings,
+  UserCog,
+  ShieldCheck
 } from 'lucide-react';
+import { useCurrentUser } from '../../hooks/use-auth';
+import { hasPermission } from '../../lib/permissions';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -29,6 +33,7 @@ interface MenuItem {
   icon: React.ElementType;
   badge?: string;
   subItems?: SubMenuItem[];
+  visible?: boolean;
 }
 
 interface MenuGroup {
@@ -39,6 +44,14 @@ interface MenuGroup {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, onClose }) => {
   const location = useLocation();
   const [executiveListOpen, setExecutiveListOpen] = React.useState(false);
+  const { data: currentUser } = useCurrentUser();
+
+  const canViewDashboard = hasPermission(currentUser, 'dashboard', 'view');
+  const canAccessImport =
+    hasPermission(currentUser, 'import', 'create') ||
+    hasPermission(currentUser, 'import', 'view');
+  const canViewUsers = hasPermission(currentUser, 'users', 'view');
+  const canViewRoles = hasPermission(currentUser, 'roles', 'view');
 
   const isPathActive = (itemPath: string) => {
     const current = location.pathname;
@@ -47,6 +60,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
     }
     if (itemPath === '/import') {
       return current === '/import';
+    }
+    if (itemPath === '/users') {
+      return current === '/users';
+    }
+    if (itemPath === '/roles') {
+      return current === '/roles';
     }
     if (itemPath === '/setting') {
       return current === '/setting' || current === '/settings';
@@ -63,6 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
           name: 'HR Executive Dashboard',
           path: '/dashboard',
           icon: LayoutDashboard,
+          visible: canViewDashboard,
           subItems: [
             { name: 'KPI Management', icon: Target },
             { name: 'Productivity Analysis', icon: LineChart },
@@ -74,19 +94,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, isCollapsed = false, o
       ]
     },
     {
-      title: 'DATA MNAGEMENT',
+      title: 'DATA MANAGEMENT',
       items: [
-        { name: 'Import Data', path: '/import', icon: FileSpreadsheet },
+        { name: 'Import Data', path: '/import', icon: FileSpreadsheet, visible: canAccessImport },
       ]
     },
     {
-      title: 'SETTING & INFORMASI',
+      title: 'ADMINISTRATION',
       items: [
-        { name: 'Setting', path: '/setting', icon: Settings },
-        // { name: 'Tentang Aplikasi', path: '/about', icon: Compass },
+        { name: 'User Management', path: '/users', icon: UserCog, visible: canViewUsers },
+        { name: 'Role & Permission', path: '/roles', icon: ShieldCheck, visible: canViewRoles },
+        { name: 'Setting', path: '/setting', icon: Settings, visible: true },
       ]
     }
-  ];
+  ]
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => item.visible !== false),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <>

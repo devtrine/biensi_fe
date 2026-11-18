@@ -25,10 +25,17 @@ import {
 } from "../../services/import.service"
 import { useImportExcel } from "../../hooks/use-import"
 import { downloadExcelTemplate } from "../../services/template.service"
+import { useCurrentUser } from "../../hooks/use-auth"
+import { hasPermission } from "../../lib/permissions"
+import { AccessDeniedCard } from "../../components/ui/AccessDeniedCard"
 
 export const ImportPage: React.FC = () => {
   const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { data: currentUser } = useCurrentUser()
+  const canAccessImport =
+    hasPermission(currentUser, "import", "create") ||
+    hasPermission(currentUser, "import", "view")
 
   const [selectedModuleKey, setSelectedModuleKey] = useState<string>("auto")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -148,6 +155,15 @@ export const ImportPage: React.FC = () => {
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+  }
+
+  if (!canAccessImport) {
+    return (
+      <AccessDeniedCard
+        title="Akses Impor Data Terbatas"
+        description="Peran akun Anda tidak memiliki izin untuk mengimpor berkas Excel."
+      />
+    )
   }
 
   return (
