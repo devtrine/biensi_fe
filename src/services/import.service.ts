@@ -102,6 +102,29 @@ export interface ImportResponseSummary {
   errors?: string[]
 }
 
+function extractErrorList(payload: any): string[] {
+  const rawErrors =
+    payload?.errors ||
+    payload?.errorList ||
+    payload?.data?.errors ||
+    payload?.data?.errorList
+
+  if (!Array.isArray(rawErrors)) return []
+  return rawErrors
+    .map((item) => {
+      if (typeof item === "string") return item.trim()
+      if (item && typeof item === "object") {
+        return item.message || item.error || JSON.stringify(item)
+      }
+      return String(item ?? "").trim()
+    })
+    .filter(Boolean)
+}
+
+function hasFailureCount(message?: string): boolean {
+  return /Gagal:\s*[1-9]\d*/i.test(message || "")
+}
+
 export async function uploadToEndpoint(
   endpoint: string,
   file: File
@@ -113,8 +136,7 @@ export async function uploadToEndpoint(
     headers: { "Content-Type": "multipart/form-data" },
   })
 
-  const rawErrors = (data as any)?.errors || (data as any)?.errorList || (data as any)?.data?.errors || (data as any)?.data?.errorList
-  const errorsList = Array.isArray(rawErrors) ? rawErrors : []
+  const errorsList = extractErrorList(data)
 
   return {
     success: data?.success ?? true,
@@ -128,35 +150,49 @@ async function uploadSpCombined(
 ): Promise<{ success: boolean; message: string; errors?: string[] }> {
   const messages: string[] = []
   const errors: string[] = []
-  let anyOk = false
+  let anySuccess = false
+  let anyResponded = false
 
-  try {
-    const detailRes = await uploadToEndpoint("/disciplinary/import-sp", file)
-    if (detailRes.success !== false) {
-      anyOk = true
-      messages.push(detailRes.message)
+  const spEndpoints = [
+    { endpoint: "/disciplinary/import-sp", label: "Detail SP" },
+    { endpoint: "/disciplinary/sp-rekap/import", label: "Rekap SP Toko" },
+  ]
+
+  for (const item of spEndpoints) {
+    try {
+      const res = await uploadToEndpoint(item.endpoint, file)
+      anyResponded = true
+
+      if (res.success !== false) {
+        anySuccess = true
+        messages.push(res.message)
+      } else if (!res.errors?.length && res.message) {
+        errors.push(`[${item.label}] ${res.message}`)
+      }
+
+      if (res.errors && res.errors.length > 0) {
+        errors.push(...res.errors)
+      }
+    } catch (err: any) {
+      const respErrors = extractErrorList(err?.response?.data)
+      if (respErrors.length > 0) {
+        errors.push(...respErrors.map((e) => `[${item.label}] ${e}`))
+      } else {
+        errors.push(
+          `[${item.label}] ${err?.response?.data?.message || err?.message || "Gagal memproses"}`
+        )
+      }
     }
-  } catch (err: any) {
-    errors.push(err?.response?.data?.message || err?.message || "Detail SP dilewati")
   }
 
-  try {
-    const rekapRes = await uploadToEndpoint("/disciplinary/sp-rekap/import", file)
-    if (rekapRes.success !== false) {
-      anyOk = true
-      messages.push(rekapRes.message)
-    }
-  } catch (err: any) {
-    errors.push(err?.response?.data?.message || err?.message || "Rekap SP Toko dilewati")
-  }
-
-  if (!anyOk) {
+  if (!anyResponded) {
     throw new Error(errors[0] || "Gagal memproses berkas Surat Peringatan (SP).")
   }
 
   return {
-    success: true,
-    message: messages.join(" • ") || "Data Surat Peringatan berhasil diproses.",
+    success: anySuccess,
+    message: messages.join(" • ") || errors[0] || "Gagal memproses berkas Surat Peringatan (SP).",
+    errors: errors.length > 0 ? errors : undefined,
   }
 }
 
@@ -183,29 +219,39 @@ export async function importAllModules(
       const isOk = res.success !== false
       if (isOk) anySuccess = true
 
+      const modErrors =
+        res.errors && res.errors.length > 0
+          ? res.errors
+          : !isOk || hasFailureCount(res.message)
+            ? [res.message]
+            : undefined
+
       results.push({
         moduleKey: mod.key,
         moduleLabel: mod.label,
         endpoint: mod.endpoint,
         success: isOk,
         message: res.message,
-        errors: res.errors,
+        errors: modErrors,
       })
 
-      if (res.errors && res.errors.length > 0) {
-        allErrors.push(...res.errors.map((e) => `[${mod.label}] ${e}`))
+      if (modErrors && modErrors.length > 0) {
+        allErrors.push(...modErrors.map((e) => `[${mod.label}] ${e}`))
       }
     } catch (err: any) {
+      const respErrors = extractErrorList(err?.response?.data)
       const errMsg = err?.response?.data?.message || err?.message || "Gagal memproses modul ini"
+      const modErrors = respErrors.length > 0 ? respErrors : [errMsg]
+
       results.push({
         moduleKey: mod.key,
         moduleLabel: mod.label,
         endpoint: mod.endpoint,
         success: false,
         message: errMsg,
-        errors: [errMsg],
+        errors: modErrors,
       })
-      allErrors.push(`[${mod.label}] ${errMsg}`)
+      allErrors.push(...modErrors.map((e) => `[${mod.label}] ${e}`))
     }
   }
 
@@ -238,24 +284,55 @@ export async function executeImport(
     onProgress(mod.label, 1, 1)
   }
 
-  const res =
-    mod.key === "sp"
-      ? await uploadSpCombined(file)
-      : await uploadToEndpoint(mod.endpoint, file)
+  try {
+    const res =
+      mod.key === "sp"
+        ? await uploadSpCombined(file)
+        : await uploadToEndpoint(mod.endpoint, file)
 
-  return {
-    success: res.success !== false,
-    message: res.message,
-    results: [
-      {
-        moduleKey: mod.key,
-        moduleLabel: mod.label,
-        endpoint: mod.endpoint,
-        success: res.success !== false,
-        message: res.message,
-        errors: res.errors,
-      },
-    ],
-    errors: res.errors,
+    const isOk = res.success !== false
+    const modErrors =
+      res.errors && res.errors.length > 0
+        ? res.errors
+        : !isOk || hasFailureCount(res.message)
+          ? [res.message]
+          : undefined
+
+    return {
+      success: isOk,
+      message: res.message,
+      results: [
+        {
+          moduleKey: mod.key,
+          moduleLabel: mod.label,
+          endpoint: mod.endpoint,
+          success: isOk,
+          message: res.message,
+          errors: modErrors,
+        },
+      ],
+      errors: modErrors,
+    }
+  } catch (err: any) {
+    const respErrors = extractErrorList(err?.response?.data)
+    if (respErrors.length > 0) {
+      const errMsg = err?.response?.data?.message || err?.message || "Gagal memproses modul ini"
+      return {
+        success: false,
+        message: errMsg,
+        results: [
+          {
+            moduleKey: mod.key,
+            moduleLabel: mod.label,
+            endpoint: mod.endpoint,
+            success: false,
+            message: errMsg,
+            errors: respErrors,
+          },
+        ],
+        errors: respErrors,
+      }
+    }
+    throw err
   }
 }
