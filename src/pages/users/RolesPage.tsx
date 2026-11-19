@@ -184,9 +184,6 @@ export const RolesPage: React.FC = () => {
   }
 
   const moduleEntries = currentDraft ? Object.entries(currentDraft.modules) : []
-  const selectedIsSuperAdmin = selectedRole
-    ? isSuperAdminRole(selectedRole.id, selectedRole.name)
-    : false
 
   return (
     <div className="space-y-6">
