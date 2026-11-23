@@ -204,14 +204,33 @@ export const ImportPage: React.FC = () => {
     return list
   }, [importResult])
 
+  const isZeroSuccessMessage = (msg?: string) =>
+    /Sukses:\s*0\b/i.test(msg || "") ||
+    /Berhasil memproses(?:\s+data\s+dari)?\s+0\b/i.test(msg || "")
+
   const hasAnyFailure = useMemo(() => {
     if (!importResult) return false
     return (
+      !importResult.success ||
       allFailures.length > 0 ||
       Boolean(importResult.results?.some((r) => !r.success || (r.errors && r.errors.length > 0))) ||
       /Gagal:\s*[1-9]\d*/i.test(importResult.message || "")
     )
   }, [importResult, allFailures])
+
+  const allFailedCompletely = useMemo(() => {
+    if (!importResult || !hasAnyFailure) return false
+    if (!importResult.success) return true
+    const results = importResult.results || []
+    if (results.length === 0) return isZeroSuccessMessage(importResult.message)
+    return results.every((r) => {
+      const modFailed =
+        !r.success ||
+        (r.errors && r.errors.length > 0) ||
+        /Gagal:\s*[1-9]\d*/i.test(r.message || "")
+      return !r.success || (modFailed && isZeroSuccessMessage(r.message))
+    })
+  }, [importResult, hasAnyFailure])
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`
@@ -785,21 +804,27 @@ export const ImportPage: React.FC = () => {
           <div className="text-center space-y-2">
             <div
               className={`w-14 h-14 rounded-2xl mx-auto flex items-center justify-center shadow-xs ${
-                hasAnyFailure
-                  ? "bg-amber-50 text-amber-600 border border-amber-200"
-                  : "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                allFailedCompletely
+                  ? "bg-red-50 text-red-600 border border-red-200"
+                  : hasAnyFailure
+                    ? "bg-amber-50 text-amber-600 border border-amber-200"
+                    : "bg-emerald-50 text-emerald-600 border border-emerald-200"
               }`}
             >
-              {hasAnyFailure ? (
+              {allFailedCompletely ? (
+                <XCircle className="w-8 h-8" />
+              ) : hasAnyFailure ? (
                 <AlertTriangle className="w-8 h-8" />
               ) : (
                 <CheckCircle2 className="w-8 h-8" />
               )}
             </div>
             <h2 className="text-xl font-black text-slate-900 font-heading">
-              {hasAnyFailure
-                ? "Impor Selesai dengan Catatan"
-                : "Impor 100% Berhasil Disimpan!"}
+              {allFailedCompletely
+                ? "Impor Gagal Diproses"
+                : hasAnyFailure
+                  ? "Impor Selesai dengan Sebagian Gagal"
+                  : "Impor 100% Berhasil Disimpan!"}
             </h2>
             <p className="text-xs text-slate-600 max-w-xl mx-auto">{importResult.message}</p>
           </div>
@@ -816,12 +841,15 @@ export const ImportPage: React.FC = () => {
                       (res.errors && res.errors.length > 0) ||
                       /Gagal:\s*[1-9]\d*/i.test(res.message || "")
                   )
+                  const modIsTotalFail = Boolean(
+                    !res.success || (modHasError && isZeroSuccessMessage(res.message))
+                  )
 
                   return (
                     <div
                       key={idx}
                       className={`p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
-                        !res.success
+                        modIsTotalFail
                           ? "bg-red-50/30"
                           : modHasError
                             ? "bg-amber-50/20"
@@ -829,7 +857,7 @@ export const ImportPage: React.FC = () => {
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        {!res.success ? (
+                        {modIsTotalFail ? (
                           <XCircle className="w-4 h-4 text-red-600 shrink-0" />
                         ) : modHasError ? (
                           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
@@ -844,15 +872,15 @@ export const ImportPage: React.FC = () => {
 
                       <span
                         className={`px-2.5 py-1 rounded-md text-[11px] font-bold font-mono self-start sm:self-center ${
-                          !res.success
+                          modIsTotalFail
                             ? "bg-red-50 text-red-700 border border-red-200"
                             : modHasError
                               ? "bg-amber-50 text-amber-800 border border-amber-300"
                               : "bg-emerald-50 text-emerald-700 border border-emerald-200"
                         }`}
                       >
-                        {!res.success
-                          ? "GAGAL"
+                        {modIsTotalFail
+                          ? `GAGAL${res.errors?.length ? ` (${res.errors.length} GAGAL)` : ""}`
                           : modHasError
                             ? `CATATAN (${res.errors?.length || 1})`
                             : "BERHASIL"}
@@ -882,15 +910,22 @@ export const ImportPage: React.FC = () => {
                   <span>{isCopied ? "Tersalin!" : "Salin"}</span>
                 </button>
               </div>
-              <div className="p-3 sm:px-4 max-h-44 overflow-y-auto space-y-1.5">
-                {allFailures.map((err, idx) => (
-                  <div key={idx} className="text-xs font-mono text-slate-800 flex items-start gap-2">
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900 shrink-0">
-                      #{idx + 1}
-                    </span>
-                    <span className="break-words">{err}</span>
-                  </div>
-                ))}
+              <div className="p-3 sm:px-4 space-y-2">
+                <div className="max-h-72 overflow-y-auto space-y-1.5 pr-1">
+                  {allFailures.map((err, idx) => (
+                    <div key={idx} className="text-xs font-mono text-slate-800 flex items-start gap-2">
+                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-200 text-amber-900 shrink-0">
+                        #{idx + 1}
+                      </span>
+                      <span className="break-words leading-relaxed">{err}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-amber-800/80 pt-1.5 border-t border-amber-200/70">
+                  {allFailedCompletely
+                    ? "Seluruh baris gagal diproses. Periksa pesan error di atas sebelum mengunggah ulang."
+                    : "Baris data lain yang valid telah berhasil disimpan ke database. Anda hanya perlu memperbaiki baris yang tercatat di atas jika ingin melakukan impor ulang."}
+                </p>
               </div>
             </div>
           )}
