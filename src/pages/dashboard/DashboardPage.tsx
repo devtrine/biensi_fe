@@ -54,6 +54,7 @@ export const DashboardPage: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>("9")
   const [userManuallyPickedMonth, setUserManuallyPickedMonth] = useState(false)
   const [selectedScope, setSelectedScope] = useState<"corporate" | "hq" | "store">("corporate")
+  const [spYearFilter, setSpYearFilter] = useState<string>("ALL")
   const [departmentFilter, setDepartmentFilter] = useState("Semua Departemen")
   const [divisionFilter, setDivisionFilter] = useState("Semua Divisi")
   const [storeTypeFilter, setStoreTypeFilter] = useState("Semua Tipe Store")
@@ -97,7 +98,7 @@ export const DashboardPage: React.FC = () => {
     isError,
     error: dashboardError,
     refetch,
-  } = useDashboardSummary(selectedYear, selectedScope, selectedMonth)
+  } = useDashboardSummary(selectedYear, selectedScope, selectedMonth, spYearFilter)
 
   const queryClient = useQueryClient()
   const [isManualReloading, setIsManualReloading] = useState(false)
@@ -129,7 +130,12 @@ export const DashboardPage: React.FC = () => {
       (dashboardResponse.summary?.attendanceByScope?.hq?.totalEmployees || 0) +
       (dashboardResponse.summary?.attendanceByScope?.store?.totalEmployees || 0)
     const sales = dashboardResponse.summary?.productivity?.totalSales || 0
-    const sp = dashboardResponse.industrialAndSp?.totalSpIssued || 0
+    const sp =
+      spYearFilter === "ALL"
+        ? dashboardResponse.industrialAndSp?.byYear?.find(
+            (y) => Number(y.year) === Number(selectedYear)
+          )?.total || 0
+        : dashboardResponse.industrialAndSp?.totalSpIssued || 0
     const comp =
       dashboardResponse.compliance?.kpi?.total ||
       dashboardResponse.industrialAndSp?.compliancePermits?.kpi?.total ||
@@ -139,7 +145,7 @@ export const DashboardPage: React.FC = () => {
       (dashboardResponse.turnoverAndRetention as any)?.overview?.kpi?.totalYtd ||
       0
     return hc > 0 || attCount > 0 || sales > 0 || sp > 0 || comp > 0 || turnover > 0
-  }, [dashboardResponse])
+  }, [dashboardResponse, selectedYear, spYearFilter])
 
   const { data: divisionsData } = useDivisions()
   const { data: departmentsData } = useDepartments()
@@ -345,6 +351,9 @@ export const DashboardPage: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setSelectedYear(year)
+                      if (spYearFilter !== "ALL") {
+                        setSpYearFilter(year)
+                      }
                       setUserManuallyPickedMonth(false)
                       setIsYearDropdownOpen(false)
                     }}
@@ -613,6 +622,8 @@ export const DashboardPage: React.FC = () => {
               departmentFilter={departmentFilter}
               storeTypeFilter={storeTypeFilter}
               regionalFilter={regionalFilter}
+              spYearFilter={spYearFilter}
+              onSpYearFilterChange={setSpYearFilter}
             />
           )}
 
@@ -621,6 +632,8 @@ export const DashboardPage: React.FC = () => {
               selectedYear={selectedYear}
               selectedScope={selectedScope}
               dashboardData={dashboardResponse}
+              spYearFilter={spYearFilter}
+              onSpYearFilterChange={setSpYearFilter}
             />
           )}
 
@@ -636,11 +649,15 @@ export const DashboardPage: React.FC = () => {
                 departmentFilter={departmentFilter}
                 storeTypeFilter={storeTypeFilter}
                 regionalFilter={regionalFilter}
+                spYearFilter={spYearFilter}
+                onSpYearFilterChange={setSpYearFilter}
               />
               <Phase1MetricsTable
                 selectedYear={selectedYear}
                 selectedScope={selectedScope}
                 dashboardData={dashboardResponse}
+                spYearFilter={spYearFilter}
+                onSpYearFilterChange={setSpYearFilter}
               />
             </div>
           )}

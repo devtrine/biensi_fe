@@ -61,13 +61,13 @@ export const ExecutiveHeroMetrics: React.FC<ExecutiveHeroMetricsProps> = ({
   const isTargetAchieved = prodProd ? prodProd.isTargetAchieved : Boolean(apiProd?.cmtTargetAchieved);
   const isStoreScope = selectedScope === 'store';
   const cmtTargetStatus = isStoreScope
-    ? 'Non-Produksi'
+    ? 'Non-Supply Chain'
     : (isTargetAchieved ? 'Target Tercapai' : 'Target Evaluasi');
   const cmtEfficiencyText = apiProd?.cmtEfficiency != null
-    ? `vs tahun lalu: ${apiProd.cmtEfficiency >= 0 ? '+' : ''}${apiProd.cmtEfficiency}% Efisiensi CMT`
+    ? `vs tahun lalu: ${apiProd.cmtEfficiency >= 0 ? '+' : ''}${apiProd.cmtEfficiency}% Efisiensi Supply Chain`
     : prodProd
       ? (isStoreScope
-        ? 'Jaringan Toko Ritel Non-Produksi'
+        ? 'Jaringan Toko Ritel Non-Supply Chain'
         : (prodProd.isTargetAchieved
           ? `vs target: ≤ ${prodProd.targetDecimal ?? 0.05} (As per Budget)`
           : `vs target: > ${prodProd.targetDecimal ?? 0.05} (Evaluasi)`))
@@ -198,7 +198,7 @@ export const ExecutiveHeroMetrics: React.FC<ExecutiveHeroMetricsProps> = ({
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
               <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                PRODUCTIVITY - PRODUCTION
+                PRODUCTIVITY - SUPPLY CHAIN
               </span>
             </div>
             <span className="px-2.5 py-1 rounded text-xs font-mono font-bold bg-purple-950/60 text-purple-300 border border-purple-800/40 tracking-wider">
@@ -224,7 +224,7 @@ export const ExecutiveHeroMetrics: React.FC<ExecutiveHeroMetricsProps> = ({
 
         <div className="pt-3.5 mt-4 border-t border-slate-800/80 grid grid-cols-2 gap-2.5">
           <div className="bg-slate-900/60 px-3 py-2 rounded-xl border border-slate-800/50">
-            <span className="text-xs font-semibold text-slate-400 block uppercase tracking-wider mb-0.5">TENAGA KERJA CMT</span>
+            <span className="text-xs font-semibold text-slate-400 block uppercase tracking-wider mb-0.5">TENAGA KERJA SUPPLY CHAIN</span>
             <span className="text-base font-bold font-mono text-white tabular-nums">
               {cmtFteDisplay}
             </span>

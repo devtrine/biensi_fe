@@ -13,6 +13,8 @@ interface Phase1MetricsTableProps {
   selectedYear: '2026' | '2025' | '2024';
   selectedScope: 'corporate' | 'hq' | 'store';
   dashboardData?: any;
+  spYearFilter?: string;
+  onSpYearFilterChange?: (val: string) => void;
 }
 
 function fmtRatePct(rawRate: any): string | null {
@@ -34,6 +36,8 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
   selectedYear,
   selectedScope,
   dashboardData,
+  spYearFilter = 'ALL',
+  onSpYearFilterChange,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
@@ -130,7 +134,7 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
       }
 
       if (m.no === 3) {
-        const actualCost = apiProd?.totalActualCost || 0;
+        const actualCost = corp?.productivity?.actualCost ?? apiProd?.totalActualCost ?? 0;
         const hqCost = hq?.productivity?.actualCost || 0;
         const storeCost = store?.productivity?.actualCost || 0;
         return {
@@ -530,8 +534,10 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
         const sNonAktif = apiSp?.storeSp?.spNonAktif ?? apiSp?.storeSp?.nonTataTertib ?? 0;
         const cAktif = apiSp?.corporateSp?.spAktif ?? (hAktif + sAktif);
         const cNonAktif = apiSp?.corporateSp?.spNonAktif ?? (hNonAktif + sNonAktif);
+        const spPeriodLabel = spYearFilter === 'ALL' ? 'Semua Tahun' : `Tahun ${spYearFilter || selectedYear}`;
         return {
           ...m,
+          formulae: `Number of Disciplinary Letters (${spPeriodLabel})`,
           totalCorporate: totalSp,
           hq: hSp,
           store: sSp,
@@ -561,27 +567,30 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
       }
 
       if (m.no === 29) {
-        const actualCost = apiProd?.totalActualCost || 0;
-        const budgetCost = apiProd?.totalBudgetCost || actualCost;
+        const actualCost = corp?.productivity?.actualCost ?? apiProd?.totalActualCost ?? 0;
+        const budgetCost = corp?.productivity?.budgetCost ?? apiProd?.totalBudgetCost ?? actualCost;
+        const budgetSrc = corp?.budgetBreakdown?.source;
         const hAct = hq?.productivity?.actualCost || 0;
         const hBud = hq?.productivity?.budgetCost || hAct;
         const sAct = store?.productivity?.actualCost || 0;
         const sBud = store?.productivity?.budgetCost || sAct;
+        const isOverBudget = budgetCost > 0 && actualCost > budgetCost;
         return {
           ...m,
+          formulae: budgetSrc ? `Actual / Budget (${budgetSrc}) × 100%` : m.formulae,
           totalCorporate: actualCost,
           hq: hAct,
           store: sAct,
           formattedCorporate: actualCost > 0 ? `Aktual Rp ${(actualCost / 1e9).toFixed(2)}M / Budget Rp ${(budgetCost / 1e9).toFixed(2)}M` : '-',
           formattedHQ: hAct > 0 ? `Aktual Rp ${(hAct / 1e9).toFixed(2)}M / Budget Rp ${(hBud / 1e9).toFixed(2)}M` : '-',
           formattedStore: sAct > 0 ? `Aktual Rp ${(sAct / 1e9).toFixed(2)}M / Budget Rp ${(sBud / 1e9).toFixed(2)}M` : '-',
-          status: actualCost > 0 ? 'optimal' : 'neutral',
-          statusLabel: actualCost > 0 ? 'Sesuai Budget' : '-',
+          status: actualCost > 0 ? (isOverBudget ? 'alert' : 'optimal') : 'neutral',
+          statusLabel: actualCost > 0 ? (isOverBudget ? 'Melebihi Budget' : 'Sesuai Budget') : '-',
         };
       }
 
       if (m.no === 30) {
-        const actualCost = apiProd?.totalActualCost || 0;
+        const actualCost = corp?.productivity?.actualCost ?? apiProd?.totalActualCost ?? 0;
         const annualized = actualCost * 12;
         const hAct = hq?.productivity?.actualCost || 0;
         const sAct = store?.productivity?.actualCost || 0;
@@ -654,10 +663,10 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
 
       if (m.no === 34) {
         const prodProd = apiProd?.productionProductivity;
-        const prodDept = (apiProd?.costByDepartment || []).find(
-          (d: any) => (d.name || '').toUpperCase().includes('PRODUC')
+        const supplyChainDiv = (apiProd?.costByDivision || []).find(
+          (d: any) => (d.name || '').toUpperCase().includes('SUPPLY CHAIN')
         );
-        const prodCount = prodProd?.productionHeadcount || prodDept?.headcount || 0;
+        const prodCount = prodProd?.productionHeadcount ?? supplyChainDiv?.headcount ?? 0;
         const totalCorp = corp.headcount || apiDemo?.totalHeadcount || prodProd?.totalHeadcount || 0;
         const totalHq = hq.headcount || apiDemo?.hqHeadcount || 0;
 
@@ -673,7 +682,7 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
           : (totalCorp > 0 && prodCount > 0 ? Number((prodCount / totalCorp).toFixed(2)) : 0);
 
         const hasData = prodCount > 0 || (corpRatio !== '-' && corpRatio !== 'Ratio 0 : 0');
-        const isOptimal = hasData && ratioDec <= 0.05;
+        const isOptimal = prodProd ? prodProd.isTargetAchieved : (hasData && ratioDec <= 0.05);
 
         return {
           ...m,
@@ -681,8 +690,8 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
           hq: hasData ? (totalHq > 0 && prodCount > 0 ? Number((prodCount / totalHq).toFixed(2)) : ratioDec) : 0,
           store: 0,
           formattedCorporate: hasData ? corpRatio : '-',
-          formattedHQ: hasData ? `${hqRatio} (HQ Produksi)` : '-',
-          formattedStore: 'N/A (Toko Non-Produksi)',
+          formattedHQ: hasData ? `${hqRatio} (HQ Supply Chain)` : '-',
+          formattedStore: 'N/A (Toko Non-Supply Chain)',
           status: isOptimal ? 'optimal' : (hasData ? 'alert' : 'neutral'),
           statusLabel: isOptimal ? 'Target Tercapai' : (hasData ? 'Perlu Evaluasi' : '-'),
         };
@@ -994,6 +1003,14 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
 
       return m;
     });
+  }, [dashboardData, selectedYear, spYearFilter]);
+
+  const spAvailableYears = useMemo(() => {
+    const years = new Set<number>([Number(selectedYear)]);
+    ((dashboardData?.industrialAndSp?.byYear || []) as Array<{ year?: number }>).forEach((y) => {
+      if (y?.year) years.add(Number(y.year));
+    });
+    return Array.from(years).sort((a, b) => b - a);
   }, [dashboardData, selectedYear]);
 
   const filteredMetrics = computedMetrics
@@ -1142,6 +1159,23 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
                   <div className={`font-semibold text-sm ${String(metric.no).startsWith('24.') ? 'pl-4 text-slate-700 font-medium' : 'text-slate-900'}`}>
                     {metric.name}
                   </div>
+                  {metric.no === 27 && onSpYearFilterChange && (
+                    <div className="mt-1.5">
+                      <select
+                        value={spYearFilter}
+                        onChange={(e) => onSpYearFilterChange(e.target.value)}
+                        aria-label="Filter Tahun SP Matriks"
+                        className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-200 hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-red-500 cursor-pointer"
+                      >
+                        <option value="ALL">Semua Tahun</option>
+                        {spAvailableYears.map((yr) => (
+                          <option key={yr} value={String(yr)}>
+                            Tahun {yr}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   {metric.criticalQuest && (
                     <span className="inline-flex items-center gap-1 text-xs font-mono font-bold text-[#C8102E] bg-red-50 px-2 py-0.5 rounded border border-red-200 mt-1">
                       {metric.criticalQuest}

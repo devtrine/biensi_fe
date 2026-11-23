@@ -24,6 +24,8 @@ interface Phase1VisualChartsProps {
   departmentFilter?: string;
   storeTypeFilter?: string;
   regionalFilter?: string;
+  spYearFilter?: string;
+  onSpYearFilterChange?: (val: string) => void;
 }
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -56,6 +58,8 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
   departmentFilter,
   storeTypeFilter,
   regionalFilter,
+  spYearFilter = 'ALL',
+  onSpYearFilterChange,
 }) => {
   const [hoveredHqKey, setHoveredHqKey] = React.useState<string | null>(null);
   const [hoveredStoreKey, setHoveredStoreKey] = React.useState<string | null>(null);
@@ -248,16 +252,22 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
     }
   };
 
+  const budgetSource: string | undefined =
+    dashboardData?.summary?.scopeBreakdown?.[selectedScope]?.budgetBreakdown?.source;
+
   const labourCostSeries = [
-    { name: 'Budget Bulanan', data: labourBudgetSeries },
+    { name: budgetSource ? `Budget (${budgetSource})` : 'Budget Bulanan', data: labourBudgetSeries },
     { name: 'Realisasi Aktual', data: labourActualSeries }
   ];
 
   const budgetCostTotal = apiProd?.totalBudgetCost || 0;
   const actualCostTotal = apiProd?.totalActualCost || 0;
-  const variancePct = budgetCostTotal > 0
-    ? (((actualCostTotal - budgetCostTotal) / budgetCostTotal) * 100).toFixed(1)
-    : '0.0';
+  const isOverBudget = budgetCostTotal > 0 && actualCostTotal > budgetCostTotal;
+  const varianceNum = budgetCostTotal > 0
+    ? ((actualCostTotal - budgetCostTotal) / budgetCostTotal) * 100
+    : 0;
+  const variancePct = `${varianceNum > 0 ? '+' : ''}${varianceNum.toFixed(1)}`;
+  const totalBudgetDisplay = `Rp ${(budgetCostTotal / 1000000000).toFixed(2)} Miliar`;
   const totalRunrateDisplay = `Rp ${(actualCostTotal / 1000000000).toFixed(2)} Miliar`;
   const diffCost = budgetCostTotal - actualCostTotal;
   const savingDisplay = diffCost >= 0
@@ -283,6 +293,15 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
   const genderPerempuanPct = genderTotal > 0 ? Number(((genderPerempuan / genderTotal) * 100).toFixed(1)) : 0;
 
   // Poin 6: Surat Peringatan (Jumlah SP Aktif & Jumlah SP Non Aktif)
+  const spAvailableYears = Array.from(
+    new Set<number>([
+      Number(selectedYear),
+      ...((apiSp?.byYear || []) as Array<{ year?: number }>)
+        .map((y) => Number(y?.year))
+        .filter((y) => !isNaN(y) && y > 0),
+    ])
+  ).sort((a, b) => b - a);
+
   const storeSpCount = apiSp?.storeSp?.total || 0;
   const hqSpCount = apiSp?.hqSp?.total || 0;
   const spScopeObj =
@@ -693,8 +712,8 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
     '21 – 25 Thn',
     '26 – 30 Thn',
     '31 – 40 Thn',
-    '40 - 50 Thn',
-    '50 - 60 Thn',
+    '41 – 49 Thn',
+    '50 – 60 Thn',
     '> 60 Thn',
   ];
   const rawAge = apiDemo?.distribution?.byAgeBracket || {};
@@ -893,14 +912,25 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
 
         <div className="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 gap-2">
               <div className="flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-emerald-600" />
-                <h3 className="text-base font-bold text-slate-900 tracking-tight font-heading">
-                  Labour Cost: Budget vs Actual
-                </h3>
+                <DollarSign className="w-4 h-4 text-emerald-600 shrink-0" />
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 tracking-tight font-heading">
+                    Labour Cost: Budget vs Actual
+                  </h3>
+                  {budgetSource && (
+                    <span className="text-[11px] font-mono text-slate-500">
+                      Basis Budget: {budgetSource}
+                    </span>
+                  )}
+                </div>
               </div>
-              <span className="px-2.5 py-1 rounded text-xs font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className={`px-2.5 py-1 rounded text-xs font-mono font-bold border shrink-0 ${
+                isOverBudget
+                  ? 'bg-rose-50 text-rose-700 border-rose-200'
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              }`}>
                 {variancePct}% Variance
               </span>
             </div>
@@ -910,11 +940,20 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
             </div>
           </div>
 
-          <div className="pt-3 mt-2 border-t border-slate-100 flex items-center justify-between text-sm">
-            <span className="text-slate-600 font-medium">Total Run-rate Bulanan:</span>
-            <span className="font-mono font-bold text-slate-900 tabular-nums">
-              {totalRunrateDisplay} <span className="text-emerald-600 font-normal">{savingDisplay}</span>
-            </span>
+          <div className="pt-3 mt-2 border-t border-slate-100 space-y-1 text-sm">
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>Total Budget ({budgetSource || `Desember ${activePeriodYear - 1}`}):</span>
+              <span className="font-mono font-semibold text-slate-700 tabular-nums">{totalBudgetDisplay}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-600 font-medium">Total Run-rate Aktual:</span>
+              <span className="font-mono font-bold text-slate-900 tabular-nums">
+                {totalRunrateDisplay}{' '}
+                <span className={diffCost >= 0 ? 'text-emerald-600 font-normal' : 'text-rose-600 font-normal'}>
+                  {savingDisplay}
+                </span>
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -1334,16 +1373,33 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
 
         <div className="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 gap-2 flex-wrap">
               <div className="flex items-center gap-2">
-                <ShieldAlert className="w-5 h-5 text-[var(--biensi-red)]" />
+                <ShieldAlert className="w-5 h-5 text-[var(--biensi-red)] shrink-0" />
                 <h3 className="text-base font-bold text-slate-900 tracking-tight font-heading">
                   Hubungan Industrial & Surat Peringatan (SP)
                 </h3>
               </div>
-              <span className="text-xs font-mono px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold border border-slate-200/80">
-                Total SP: {totalSpCount}
-              </span>
+              <div className="flex items-center gap-2">
+                {onSpYearFilterChange && (
+                  <select
+                    value={spYearFilter}
+                    onChange={(e) => onSpYearFilterChange(e.target.value)}
+                    aria-label="Filter Tahun SP"
+                    className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-white text-slate-700 border border-slate-200 hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-red-500 cursor-pointer"
+                  >
+                    <option value="ALL">Semua Tahun</option>
+                    {spAvailableYears.map((yr) => (
+                      <option key={yr} value={String(yr)}>
+                        Tahun {yr}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <span className="text-xs font-mono px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold border border-slate-200/80">
+                  Total SP: {totalSpCount}
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3.5 my-3.5">

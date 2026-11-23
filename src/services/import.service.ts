@@ -86,6 +86,32 @@ export const IMPORT_MODULES: ImportModuleOption[] = [
   },
 ]
 
+export interface ImportValidationReport {
+  success: boolean
+  dryRun: boolean
+  canProceed: boolean
+  resolvedEndpoint?: string
+  summary: {
+    module: string
+    fileName: string
+    sheets: string[]
+    detectedPeriods: string[]
+    totalRows: number
+    validRows: number
+    errorCount: number
+    fileDuplicateCount: number
+    dbDuplicateCount: number
+  }
+  issues: {
+    headerErrors: string[]
+    rowErrors: string[]
+    fileDuplicates: string[]
+    dbDuplicates: string[]
+  }
+  errors?: string[]
+  message: string
+}
+
 export interface ImportResultItem {
   moduleKey: string
   moduleLabel: string
@@ -100,6 +126,64 @@ export interface ImportResponseSummary {
   message: string
   results: ImportResultItem[]
   errors?: string[]
+}
+
+async function postDryRun(
+  moduleKey: string,
+  commitEndpoint: string,
+  file: File
+): Promise<ImportValidationReport> {
+  const formData = new FormData()
+  formData.append("file", file)
+  try {
+    const { data } = await api.post<ImportValidationReport>(
+      `/import/validate/${moduleKey}`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    )
+    if (!data || !data.dryRun || !data.summary || !data.issues) {
+      throw new Error(
+        "Respons validasi dari backend tidak sesuai. Pastikan server backend sudah di-restart dengan versi terbaru."
+      )
+    }
+    return { ...data, resolvedEndpoint: commitEndpoint }
+  } catch (err: any) {
+    if (err?.response?.status === 404) {
+      throw new Error(
+        "Endpoint validasi (/import/validate) belum aktif di backend. Silakan restart server backend terlebih dahulu."
+      )
+    }
+    throw err
+  }
+}
+
+export async function validateImportFile(
+  targetKey: string,
+  file: File
+): Promise<ImportValidationReport> {
+  const mod = IMPORT_MODULES.find((m) => m.key === targetKey)
+  if (!mod || mod.endpoint === "all") {
+    throw new Error(`Modul target "${targetKey}" tidak valid.`)
+  }
+
+  if (mod.key === "sp") {
+    const detailReport = await postDryRun("sp", "/disciplinary/import-sp", file)
+    if (detailReport.summary.totalRows > 0 || detailReport.canProceed) {
+      return detailReport
+    }
+    // Fallback ke Rekap SP Toko hanya jika berkas bukan format Detail SP
+    try {
+      const rekapReport = await postDryRun("sp-rekap", "/disciplinary/sp-rekap/import", file)
+      if (rekapReport.summary.totalRows > 0) {
+        return rekapReport
+      }
+    } catch {
+      // Tetap kembalikan hasil validasi Detail SP
+    }
+    return detailReport
+  }
+
+  return await postDryRun(mod.key, mod.endpoint, file)
 }
 
 export async function uploadToEndpoint(
@@ -223,7 +307,8 @@ export async function importAllModules(
 export async function executeImport(
   targetKey: string,
   file: File,
-  onProgress?: (currentModule: string, index: number, total: number) => void
+  onProgress?: (currentModule: string, index: number, total: number) => void,
+  resolvedEndpoint?: string
 ): Promise<ImportResponseSummary> {
   if (targetKey === "auto") {
     return await importAllModules(file, onProgress)
@@ -238,10 +323,11 @@ export async function executeImport(
     onProgress(mod.label, 1, 1)
   }
 
+  const targetEndpoint = resolvedEndpoint || mod.endpoint
   const res =
-    mod.key === "sp"
+    mod.key === "sp" && !resolvedEndpoint
       ? await uploadSpCombined(file)
-      : await uploadToEndpoint(mod.endpoint, file)
+      : await uploadToEndpoint(targetEndpoint, file)
 
   return {
     success: res.success !== false,
@@ -250,7 +336,7 @@ export async function executeImport(
       {
         moduleKey: mod.key,
         moduleLabel: mod.label,
-        endpoint: mod.endpoint,
+        endpoint: targetEndpoint,
         success: res.success !== false,
         message: res.message,
         errors: res.errors,
