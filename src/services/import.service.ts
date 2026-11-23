@@ -194,14 +194,12 @@ export async function validateImportFile(
     if (detailReport.summary.totalRows > 0 || detailReport.canProceed) {
       return detailReport
     }
-    // Fallback ke Rekap SP Toko hanya jika berkas bukan format Detail SP
     try {
       const rekapReport = await postDryRun("sp-rekap", "/disciplinary/sp-rekap/import", file)
       if (rekapReport.summary.totalRows > 0) {
         return rekapReport
       }
     } catch {
-      // Tetap kembalikan hasil validasi Detail SP
     }
     return detailReport
   }
