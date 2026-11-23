@@ -13,7 +13,8 @@ export interface ReportingPeriodItem {
 export async function getDashboardSummary(
   year: string = "2026",
   scope: string = "Corporate",
-  month?: string
+  month?: string,
+  spYear?: string
 ): Promise<MainDashboardResponse | null> {
   try {
     const params = new URLSearchParams()
@@ -22,6 +23,7 @@ export async function getDashboardSummary(
 
     const effectiveMonth = month || (year === "2026" ? "9" : undefined)
     if (effectiveMonth) params.append("month", effectiveMonth)
+    if (spYear) params.append("spYear", spYear)
 
     const [summaryRes, attHistoryRes] = await Promise.all([
       api.get<ApiResponse<MainDashboardResponse>>(

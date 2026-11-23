@@ -93,6 +93,13 @@ export interface ScopeGroup {
     partTime?: number
     internship?: number
   }
+  budgetBreakdown?: {
+    source: string
+    total: number
+    byDivision: Record<string, number>
+    byDepartment: Record<string, number>
+    byEmploymentType: Record<string, number>
+  }
   productivity?: {
     budgetCost: number
     actualCost: number
@@ -188,32 +195,47 @@ export interface AttendanceAggregateItem {
   }
 }
 
+export interface SpScopeSummary {
+  total: number
+  spAktif?: number
+  spNonAktif?: number
+  tataTertib: number
+  nonTataTertib: number
+  sp1?: number
+  sp2?: number
+  sp3?: number
+  barat?: number
+  timur?: number
+}
+
+export interface SpByYearItem {
+  year: number
+  total: number
+  spAktif: number
+  spNonAktif: number
+  store: number
+  hq: number
+  tataTertib: number
+  nonTataTertib: number
+  detail?: {
+    corporate: SpScopeSummary
+    store: SpScopeSummary
+    hq: SpScopeSummary
+  }
+}
+
 export interface IndustrialAndSp {
+  spFilterYear?: "ALL" | number
   totalSpIssued: number
-  corporateSp?: {
-    total: number
-    spAktif: number
-    spNonAktif: number
-    tataTertib: number
-    nonTataTertib: number
+  corporateSp?: SpScopeSummary
+  storeSp: SpScopeSummary
+  hqSp: SpScopeSummary
+  allTimeSp?: {
+    corporate: SpScopeSummary
+    store: SpScopeSummary
+    hq: SpScopeSummary
   }
-  storeSp: {
-    total: number
-    spAktif?: number
-    spNonAktif?: number
-    tataTertib: number
-    nonTataTertib: number
-    sp1?: number
-    sp2?: number
-    sp3?: number
-  }
-  hqSp: {
-    total: number
-    spAktif?: number
-    spNonAktif?: number
-    tataTertib: number
-    nonTataTertib: number
-  }
+  byYear?: SpByYearItem[]
   disputes: {
     corporate: { total: number; selesai: number; bipartit: number; mediasi: number; phi?: number }
     hq: { total: number; selesai: number; bipartit: number; mediasi: number; phi?: number }

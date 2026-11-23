@@ -5,12 +5,13 @@ import * as orgService from "../services/organization.service"
 export function useDashboardSummary(
   year: string = "2026",
   scope: string = "Corporate",
-  month?: string
+  month?: string,
+  spYear?: string
 ) {
   const normScope = scope === "hq" ? "HQ" : scope === "store" ? "Store" : "Corporate"
   return useQuery({
-    queryKey: ["dashboardSummary", year, normScope, month],
-    queryFn: () => dashboardService.getDashboardSummary(year, normScope, month),
+    queryKey: ["dashboardSummary", year, normScope, month, spYear],
+    queryFn: () => dashboardService.getDashboardSummary(year, normScope, month, spYear),
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
