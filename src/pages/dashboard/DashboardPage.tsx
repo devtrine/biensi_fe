@@ -49,9 +49,11 @@ export const DashboardPage: React.FC = () => {
   const canAccessImport =
     hasPermission(currentUser, "import", "create") ||
     hasPermission(currentUser, "import", "view")
+  const currentCalendarYear = new Date().getFullYear()
   const [activeTab, setActiveTab] = useState<"visual" | "matrix" | "both">("both")
-  const [selectedYear, setSelectedYear] = useState<"2026" | "2025" | "2024">("2026")
-  const [selectedMonth, setSelectedMonth] = useState<string>("9")
+  const [selectedYear, setSelectedYear] = useState<string>(() => String(currentCalendarYear))
+  const [userManuallyPickedYear, setUserManuallyPickedYear] = useState(false)
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => String(new Date().getMonth() + 1))
   const [userManuallyPickedMonth, setUserManuallyPickedMonth] = useState(false)
   const [selectedScope, setSelectedScope] = useState<"corporate" | "hq" | "store">("corporate")
   const [spYearFilter, setSpYearFilter] = useState<string>("ALL")
@@ -99,6 +101,59 @@ export const DashboardPage: React.FC = () => {
     error: dashboardError,
     refetch,
   } = useDashboardSummary(selectedYear, selectedScope, selectedMonth, spYearFilter)
+
+  const yearsWithDataSet = useMemo(() => {
+    const set = new Set<string>()
+    ;(reportingPeriods || []).forEach((p) => {
+      const y = Number(p.year)
+      if (Number.isInteger(y) && y >= 2020 && y <= 2100) set.add(String(y))
+    })
+    ;(dashboardResponse?.availableYears || []).forEach((y) => {
+      const n = Number(y)
+      if (Number.isInteger(n) && n >= 2020 && n <= 2100) set.add(String(n))
+    })
+    ;(dashboardResponse?.industrialAndSp?.byYear || []).forEach((item) => {
+      const n = Number(item.year)
+      if (Number.isInteger(n) && n >= 2020 && n <= 2100) set.add(String(n))
+    })
+    return set
+  }, [reportingPeriods, dashboardResponse])
+
+  const availableYears = useMemo(() => {
+    const yearSet = new Set<number>()
+    yearsWithDataSet.forEach((y) => yearSet.add(Number(y)))
+
+    // Pastikan tahun kalender berjalan & tahun yang sedang dipilih selalu ada
+    yearSet.add(currentCalendarYear)
+    const selNum = Number(selectedYear)
+    if (Number.isInteger(selNum) && selNum >= 2020 && selNum <= 2100) {
+      yearSet.add(selNum)
+    }
+
+    // Jika data di database masih kurang dari 3 tahun, lengkapi rentang 3 tahun berjalan secara dinamis
+    if (yearSet.size < 3) {
+      const anchorYear = Math.max(currentCalendarYear, ...Array.from(yearSet))
+      yearSet.add(anchorYear)
+      yearSet.add(anchorYear - 1)
+      yearSet.add(anchorYear - 2)
+    }
+
+    return Array.from(yearSet)
+      .sort((a, b) => b - a)
+      .map(String)
+  }, [yearsWithDataSet, currentCalendarYear, selectedYear])
+
+  useEffect(() => {
+    if (userManuallyPickedYear || yearsWithDataSet.size === 0) return
+    if (!yearsWithDataSet.has(selectedYear)) {
+      const sorted = Array.from(yearsWithDataSet)
+        .map(Number)
+        .sort((a, b) => b - a)
+      if (sorted.length > 0) {
+        setSelectedYear(String(sorted[0]))
+      }
+    }
+  }, [yearsWithDataSet, selectedYear, userManuallyPickedYear])
 
   const queryClient = useQueryClient()
   const [isManualReloading, setIsManualReloading] = useState(false)
@@ -344,13 +399,14 @@ export const DashboardPage: React.FC = () => {
             </button>
 
             {isYearDropdownOpen && (
-              <div className="absolute right-0 sm:left-0 sm:right-auto mt-1.5 w-40 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100">
-                {(["2026", "2025", "2024"] as const).map((year) => (
+              <div className="absolute right-0 sm:left-0 sm:right-auto mt-1.5 w-40 max-h-64 overflow-y-auto bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-40 animate-in fade-in zoom-in-95 duration-100">
+                {availableYears.map((year) => (
                   <button
                     key={year}
                     type="button"
                     onClick={() => {
                       setSelectedYear(year)
+                      setUserManuallyPickedYear(true)
                       if (spYearFilter !== "ALL") {
                         setSpYearFilter(year)
                       }

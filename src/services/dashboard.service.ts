@@ -11,7 +11,7 @@ export interface ReportingPeriodItem {
 }
 
 export async function getDashboardSummary(
-  year: string = "2026",
+  year: string = String(new Date().getFullYear()),
   scope: string = "Corporate",
   month?: string,
   spYear?: string
@@ -21,8 +21,7 @@ export async function getDashboardSummary(
     if (year) params.append("year", year)
     if (scope) params.append("scope", scope)
 
-    const effectiveMonth = month || (year === "2026" ? "9" : undefined)
-    if (effectiveMonth) params.append("month", effectiveMonth)
+    if (month) params.append("month", month)
     if (spYear) params.append("spYear", spYear)
 
     const [summaryRes, attHistoryRes] = await Promise.all([

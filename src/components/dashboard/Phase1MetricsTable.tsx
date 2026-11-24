@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 interface Phase1MetricsTableProps {
-  selectedYear: '2026' | '2025' | '2024';
+  selectedYear: string;
   selectedScope: 'corporate' | 'hq' | 'store';
   dashboardData?: any;
   spYearFilter?: string;

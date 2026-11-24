@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 interface Phase1VisualChartsProps {
-  selectedYear: '2026' | '2025' | '2024';
+  selectedYear: string;
   selectedMonth?: string;
   selectedMonthName?: string;
   selectedScope: 'corporate' | 'hq' | 'store';
@@ -85,12 +85,12 @@ export const Phase1VisualCharts: React.FC<Phase1VisualChartsProps> = ({
   const trajectoryItems = Array.isArray(rawTrajectory) && rawTrajectory.length > 0
     ? [...rawTrajectory].sort((a: any, b: any) => Number(a.year) - Number(b.year))
     : [
-        { year: 2024, month: activePeriodMonthNum, store: 0, hq: 0, total: 0 },
-        { year: 2025, month: activePeriodMonthNum, store: 0, hq: 0, total: 0 },
+        { year: activePeriodYear - 2, month: activePeriodMonthNum, store: 0, hq: 0, total: 0 },
+        { year: activePeriodYear - 1, month: activePeriodMonthNum, store: 0, hq: 0, total: 0 },
         { year: activePeriodYear, month: activePeriodMonthNum, store: dynamicStoreHeadcount, hq: dynamicHqHeadcount, total: totalHeadcount }
       ];
 
-  const minTrajectoryYear = trajectoryItems[0]?.year || 2024;
+  const minTrajectoryYear = trajectoryItems[0]?.year || (activePeriodYear - 2);
   const maxTrajectoryYear = trajectoryItems[trajectoryItems.length - 1]?.year || activePeriodYear;
   const trajectoryTitle = minTrajectoryYear === maxTrajectoryYear
     ? `Trajektori Headcount (${minTrajectoryYear})`

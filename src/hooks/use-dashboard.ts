@@ -3,7 +3,7 @@ import * as dashboardService from "../services/dashboard.service"
 import * as orgService from "../services/organization.service"
 
 export function useDashboardSummary(
-  year: string = "2026",
+  year: string = String(new Date().getFullYear()),
   scope: string = "Corporate",
   month?: string,
   spYear?: string

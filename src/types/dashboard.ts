@@ -275,6 +275,7 @@ export interface MainDashboardResponse {
     month: number
     scope: string
   }
+  availableYears?: number[]
   summary: DashboardSummary
   storePerformance?: any
   turnoverAndRetention?: any

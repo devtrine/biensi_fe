@@ -2,7 +2,7 @@ import React from 'react';
 import { ArrowUpRight, ArrowDownRight, CheckCircle2 } from 'lucide-react';
 
 interface ExecutiveHeroMetricsProps {
-  selectedYear: '2026' | '2025' | '2024';
+  selectedYear: string;
   selectedScope: 'corporate' | 'hq' | 'store';
   dashboardData?: any;
 }
