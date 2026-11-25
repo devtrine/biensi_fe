@@ -235,6 +235,8 @@ export interface ImportResultItem {
   fileName?: string
   periods?: DetectedPeriodItem[]
   requiresConfirmation?: boolean
+  requiresReimportConfirmation?: boolean
+  reimportWarning?: ReimportWarningInfo | null
   confirmStep?: number
   totalConfirmSteps?: number
   errors?: string[]
@@ -246,6 +248,8 @@ export interface ImportResponseSummary {
   fileName?: string
   periods?: DetectedPeriodItem[]
   requiresConfirmation?: boolean
+  requiresReimportConfirmation?: boolean
+  reimportWarning?: ReimportWarningInfo | null
   confirmStep?: number
   totalConfirmSteps?: number
   results: ImportResultItem[]
@@ -343,6 +347,7 @@ export async function uploadToEndpoint(
   periods?: DetectedPeriodItem[]
   requiresConfirmation?: boolean
   requiresReimportConfirmation?: boolean
+  reimportWarning?: ReimportWarningInfo | null
   confirmStep?: number
   totalConfirmSteps?: number
   errors?: string[]
@@ -374,13 +379,18 @@ export async function uploadToEndpoint(
     data?.periods ||
     (data?.data?.period ? [data.data.period] : undefined)
 
+  const requiresReimportConfirmation = Boolean(
+    data?.requiresReimportConfirmation || data?.code === "DUPLICATE_FILE_REIMPORT_CONFIRM"
+  )
+
   return {
     success: data?.success ?? true,
     message: data?.message || "File berhasil diproses oleh backend.",
     fileName: data?.data?.fileName || data?.fileName || file.name,
     periods: rawPeriods,
     requiresConfirmation: Boolean(data?.requiresConfirmation),
-    requiresReimportConfirmation: Boolean(data?.requiresReimportConfirmation),
+    requiresReimportConfirmation,
+    reimportWarning: (data?.reimportWarning as ReimportWarningInfo | undefined) ?? null,
     confirmStep: data?.confirmStep,
     totalConfirmSteps: data?.totalConfirmSteps,
     errors: errorsList.length > 0 ? errorsList : undefined,
@@ -397,6 +407,8 @@ async function uploadSpCombined(
   fileName?: string
   periods?: DetectedPeriodItem[]
   requiresConfirmation?: boolean
+  requiresReimportConfirmation?: boolean
+  reimportWarning?: ReimportWarningInfo | null
   confirmStep?: number
   totalConfirmSteps?: number
   errors?: string[]
@@ -408,6 +420,8 @@ async function uploadSpCombined(
   let resolvedFileName: string | undefined
   let resolvedPeriods: DetectedPeriodItem[] | undefined
   let needsConfirm = false
+  let needsReimportConfirm = false
+  let resolvedReimportWarning: ReimportWarningInfo | null = null
   let nextConfirmStep: number | undefined
   let totalConfirmSteps: number | undefined
 
@@ -427,11 +441,20 @@ async function uploadSpCombined(
         nextConfirmStep = res.confirmStep
         totalConfirmSteps = res.totalConfirmSteps
       }
+      if (res.requiresReimportConfirmation) {
+        needsReimportConfirm = true
+        if (!resolvedReimportWarning && res.reimportWarning) {
+          resolvedReimportWarning = res.reimportWarning
+        }
+        if (res.message && !messages.includes(res.message)) {
+          messages.push(res.message)
+        }
+      }
 
       if (res.success !== false) {
         anySuccess = true
         messages.push(res.message)
-      } else if (!res.errors?.length && res.message) {
+      } else if (!res.requiresReimportConfirmation && !res.errors?.length && res.message) {
         errors.push(`[${item.label}] ${res.message}`)
       }
 
@@ -460,6 +483,8 @@ async function uploadSpCombined(
     fileName: resolvedFileName || file.name,
     periods: resolvedPeriods,
     requiresConfirmation: needsConfirm || undefined,
+    requiresReimportConfirmation: needsReimportConfirm || undefined,
+    reimportWarning: resolvedReimportWarning,
     confirmStep: nextConfirmStep,
     totalConfirmSteps,
     errors: errors.length > 0 ? errors : undefined,
@@ -566,10 +591,11 @@ export async function executeImport(
         : await uploadToEndpoint(targetEndpoint, file, confirmStep, allowReimport)
 
     const isOk = res.success !== false
+    const needsReimportConfirm = Boolean(res.requiresReimportConfirmation)
     const modErrors =
       res.errors && res.errors.length > 0
         ? res.errors
-        : !isOk || hasFailureCount(res.message)
+        : !needsReimportConfirm && (!isOk || hasFailureCount(res.message))
           ? [res.message]
           : undefined
 
@@ -579,6 +605,8 @@ export async function executeImport(
       fileName: res.fileName || file.name,
       periods: res.periods,
       requiresConfirmation: res.requiresConfirmation,
+      requiresReimportConfirmation: needsReimportConfirm || undefined,
+      reimportWarning: res.reimportWarning ?? null,
       confirmStep: res.confirmStep,
       totalConfirmSteps: res.totalConfirmSteps,
       results: [
@@ -591,6 +619,8 @@ export async function executeImport(
           fileName: res.fileName || file.name,
           periods: res.periods,
           requiresConfirmation: res.requiresConfirmation,
+          requiresReimportConfirmation: needsReimportConfirm || undefined,
+          reimportWarning: res.reimportWarning ?? null,
           confirmStep: res.confirmStep,
           totalConfirmSteps: res.totalConfirmSteps,
           errors: modErrors,

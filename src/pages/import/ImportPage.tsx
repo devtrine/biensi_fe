@@ -215,13 +215,15 @@ export const ImportPage: React.FC = () => {
   }, [currentModule.periodMode, validationReport, hasReimportAlert])
 
   const isBusy = isValidating || isPending
+  const isCommitReimportConfirm = Boolean(isSuccess && importResult?.requiresReimportConfirmation)
 
   const currentStep: 0 | 1 | 2 | 3 = useMemo(() => {
+    if (isCommitReimportConfirm) return 2
     if (isSuccess || isError) return 3
     if (!selectedFile) return 0
     if ((validationReport?.canProceed || hasReimportAlert) && !isValidating) return 2
     return 1
-  }, [isSuccess, isError, selectedFile, validationReport, hasReimportAlert, isValidating])
+  }, [isCommitReimportConfirm, isSuccess, isError, selectedFile, validationReport, hasReimportAlert, isValidating])
 
   const triggerValidation = (moduleKey: string, file: File) => {
     resetMutation()
@@ -321,6 +323,21 @@ export const ImportPage: React.FC = () => {
     }
   }
 
+  const handleConfirmCommitReimport = () => {
+    if (!selectedFile || isBusy) return
+    const finalConfirmStep = isMultiMonthGeneral ? 2 : 0
+    setReimportConfirmed(true)
+    resetMutation()
+    setIsSubmittedCurrentFile(true)
+    runImport({
+      targetKey: selectedModuleKey,
+      file: selectedFile,
+      resolvedEndpoint: validationReport?.resolvedEndpoint,
+      confirmStep: finalConfirmStep,
+      allowReimport: true,
+    })
+  }
+
   const handleReset = () => {
     resetMutation()
     resetValidation()
@@ -373,7 +390,7 @@ export const ImportPage: React.FC = () => {
     /Berhasil memproses(?:\s+data\s+dari)?\s+0\b/i.test(msg || "")
 
   const hasAnyFailure = useMemo(() => {
-    if (!importResult) return false
+    if (!importResult || importResult.requiresReimportConfirmation) return false
     return (
       !importResult.success ||
       allFailures.length > 0 ||
@@ -383,7 +400,7 @@ export const ImportPage: React.FC = () => {
   }, [importResult, allFailures])
 
   const allFailedCompletely = useMemo(() => {
-    if (!importResult || !hasAnyFailure) return false
+    if (!importResult || importResult.requiresReimportConfirmation || !hasAnyFailure) return false
     if (!importResult.success) return true
     const results = importResult.results || []
     if (results.length === 0) return isZeroSuccessMessage(importResult.message)
@@ -472,7 +489,7 @@ export const ImportPage: React.FC = () => {
                 ((validationReport && !validationReport.canProceed && !hasReimportAlert) ||
                   isValidateError)
             )
-            const step3Failed = Boolean(isError || (isSuccess && allFailedCompletely))
+            const step3Failed = Boolean(isError || (isSuccess && !isCommitReimportConfirm && allFailedCompletely))
             const isStepError =
               (step.num === 1 && step1Failed && currentStep === 1) ||
               (step.num === 3 && step3Failed && currentStep === 3)
@@ -1488,8 +1505,98 @@ export const ImportPage: React.FC = () => {
         </div>
       )}
 
+      {/* Konfirmasi Re-Import jika terdeteksi duplikat file saat commit */}
+      {isCommitReimportConfirm && importResult && (
+        <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/90 border-l-4 border-l-amber-400/80 shadow-2xs space-y-5">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-50/70 text-amber-700/80 border border-amber-200/60 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div className="space-y-2 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-50/80 text-amber-800/90 border border-amber-200/80">
+                  Peringatan Duplikat File
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                  {currentModule.label}
+                </span>
+                {(importResult.reimportWarning?.fileName || importResult.fileName || selectedFile?.name) && (
+                  <span className="text-xs font-mono text-slate-600">
+                    File:{" "}
+                    <strong className="text-slate-900">
+                      {importResult.reimportWarning?.fileName || importResult.fileName || selectedFile?.name}
+                    </strong>
+                  </span>
+                )}
+              </div>
+
+              <h3 className="text-sm font-black text-slate-900">
+                File Ini Sudah Pernah Dimasukkan pada Bulan Ini
+              </h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                {importResult.reimportWarning?.message || importResult.message}
+              </p>
+
+              {(importResult.reimportWarning?.matchedPeriods?.length ?? 0) > 0 ? (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {importResult.reimportWarning!.matchedPeriods.map((mp) => (
+                    <span
+                      key={mp.key}
+                      className="px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-[11px] font-mono text-slate-700"
+                    >
+                      {mp.label} • {mp.fileName} ({mp.totalRecords} baris
+                      {mp.uploadedAt
+                        ? `, ${new Date(mp.uploadedAt).toLocaleDateString("id-ID")}`
+                        : ""}
+                      )
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                (validationReport?.summary?.detectedPeriods?.length ?? 0) > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {validationReport!.summary.detectedPeriods.map((pk) => (
+                      <span
+                        key={pk}
+                        className="px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-[11px] font-mono text-slate-700"
+                      >
+                        {formatPeriodKeyLabel(pk)}
+                      </span>
+                    ))}
+                  </div>
+                )
+              )}
+
+              <p className="text-[11px] text-slate-500 pt-1">
+                Belum ada data yang disimpan pada percobaan ini. Klik tombol di bawah jika Anda yakin ingin mengimpor ulang file yang sama.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={handleReset}
+              className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl cursor-pointer transition-colors flex items-center justify-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Batalkan / Ganti Berkas</span>
+            </button>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={handleConfirmCommitReimport}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              <span>Ya, Masukkan Lagi File Ini</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Tahap 3: Hasil Impor (TIDAK Auto-Redirect ke Dashboard) */}
-      {isSuccess && importResult && (
+      {isSuccess && importResult && !isCommitReimportConfirm && (
         <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/90 shadow-2xs space-y-6">
           <div className="text-center space-y-2">
             <div
