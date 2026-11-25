@@ -26,6 +26,7 @@ import {
   useDepartments,
   useReportingPeriods,
 } from "../../hooks/use-dashboard"
+import { hasPersistedKey, usePersistedState } from "../../hooks/use-persisted-state"
 
 const MONTHS = [
   { id: "1", label: "01 - Januari", name: "Januari" },
@@ -50,17 +51,57 @@ export const DashboardPage: React.FC = () => {
     hasPermission(currentUser, "import", "create") ||
     hasPermission(currentUser, "import", "view")
   const currentCalendarYear = new Date().getFullYear()
-  const [activeTab, setActiveTab] = useState<"visual" | "matrix" | "both">("both")
-  const [selectedYear, setSelectedYear] = useState<string>(() => String(currentCalendarYear))
-  const [userManuallyPickedYear, setUserManuallyPickedYear] = useState(false)
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => String(new Date().getMonth() + 1))
-  const [userManuallyPickedMonth, setUserManuallyPickedMonth] = useState(false)
-  const [selectedScope, setSelectedScope] = useState<"corporate" | "hq" | "store">("corporate")
-  const [spYearFilter, setSpYearFilter] = useState<string>("ALL")
-  const [departmentFilter, setDepartmentFilter] = useState("Semua Departemen")
-  const [divisionFilter, setDivisionFilter] = useState("Semua Divisi")
-  const [storeTypeFilter, setStoreTypeFilter] = useState("Semua Tipe Store")
-  const [regionalFilter, setRegionalFilter] = useState("Semua Area (Barat & Timur)")
+  const [activeTab, setActiveTab] = usePersistedState<"visual" | "matrix" | "both">(
+    "biensi:filter:dashboard:tab",
+    "both",
+    (v): v is "visual" | "matrix" | "both" => v === "visual" || v === "matrix" || v === "both"
+  )
+  const [selectedYear, setSelectedYear] = usePersistedState<string>(
+    "biensi:filter:dashboard:year",
+    () => String(currentCalendarYear),
+    (v): v is string => typeof v === "string" && /^\d{4}$/.test(v)
+  )
+  const [userManuallyPickedYear, setUserManuallyPickedYear] = useState(() =>
+    hasPersistedKey("biensi:filter:dashboard:year")
+  )
+  const [selectedMonth, setSelectedMonth] = usePersistedState<string>(
+    "biensi:filter:dashboard:month",
+    () => String(new Date().getMonth() + 1),
+    (v): v is string => typeof v === "string" && Number(v) >= 1 && Number(v) <= 12
+  )
+  const [userManuallyPickedMonth, setUserManuallyPickedMonth] = useState(() =>
+    hasPersistedKey("biensi:filter:dashboard:month")
+  )
+  const [selectedScope, setSelectedScope] = usePersistedState<"corporate" | "hq" | "store">(
+    "biensi:filter:dashboard:scope",
+    "corporate",
+    (v): v is "corporate" | "hq" | "store" => v === "corporate" || v === "hq" || v === "store"
+  )
+  const [spYearFilter, setSpYearFilter] = usePersistedState<string>(
+    "biensi:filter:dashboard:spYear",
+    "ALL",
+    (v): v is string => typeof v === "string" && v.length > 0
+  )
+  const [departmentFilter, setDepartmentFilter] = usePersistedState<string>(
+    "biensi:filter:dashboard:department",
+    "Semua Departemen",
+    (v): v is string => typeof v === "string"
+  )
+  const [divisionFilter, setDivisionFilter] = usePersistedState<string>(
+    "biensi:filter:dashboard:division",
+    "Semua Divisi",
+    (v): v is string => typeof v === "string"
+  )
+  const [storeTypeFilter, setStoreTypeFilter] = usePersistedState<string>(
+    "biensi:filter:dashboard:storeType",
+    "Semua Tipe Store",
+    (v): v is string => typeof v === "string"
+  )
+  const [regionalFilter, setRegionalFilter] = usePersistedState<string>(
+    "biensi:filter:dashboard:regional",
+    "Semua Area (Barat & Timur)",
+    (v): v is string => typeof v === "string"
+  )
   const [quickActionsOpen, setQuickActionsOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 

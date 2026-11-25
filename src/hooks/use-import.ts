@@ -59,11 +59,13 @@ export function useImportExcel() {
       file,
       resolvedEndpoint,
       confirmStep = 0,
+      allowReimport = false,
     }: {
       targetKey: string
       file: File
       resolvedEndpoint?: string
       confirmStep?: number
+      allowReimport?: boolean
     }) => {
       setProgressPercent(15)
       setProgressStep("Mengirim berkas terverifikasi ke server...")
@@ -77,7 +79,8 @@ export function useImportExcel() {
           setProgressStep(`Memproses impor: ${moduleLabel} (${current}/${total})...`)
         },
         resolvedEndpoint,
-        confirmStep
+        confirmStep,
+        allowReimport
       )
 
       setProgressPercent(100)

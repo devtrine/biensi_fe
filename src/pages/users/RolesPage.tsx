@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { message } from "antd"
 import { Save, ShieldCheck, Users, RefreshCw, AlertCircle, RotateCcw } from "lucide-react"
 import { useCurrentUser } from "../../hooks/use-auth"
+import { usePersistedState } from "../../hooks/use-persisted-state"
 import { useRoles, useUpdateRolePermissions } from "../../hooks/use-administration"
 import { getErrorMessage } from "../../lib/api/client"
 import {
@@ -40,7 +41,11 @@ export const RolesPage: React.FC = () => {
   const { data: roles = [], isLoading, isError, error, refetch } = useRoles(canViewRoles)
   const updateMutation = useUpdateRolePermissions()
 
-  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null)
+  const [selectedRoleId, setSelectedRoleId] = usePersistedState<number | null>(
+    "biensi:filter:roles:selectedRoleId",
+    null,
+    (v): v is number | null => v === null || typeof v === "number"
+  )
   const [draftsByRoleId, setDraftsByRoleId] = useState<Record<number, RoleDraft>>({})
 
   const selectedRole: RoleItem | undefined = useMemo(() => {

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { usePersistedState } from '../../hooks/use-persisted-state';
 import { phase1Metrics } from '../../data/phase1Data';
 import {
   Search,
@@ -39,8 +40,16 @@ export const Phase1MetricsTable: React.FC<Phase1MetricsTableProps> = ({
   spYearFilter = 'ALL',
   onSpYearFilterChange,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('Semua');
+  const [searchQuery, setSearchQuery] = usePersistedState<string>(
+    'biensi:filter:metricsTable:search',
+    '',
+    (v): v is string => typeof v === 'string'
+  );
+  const [selectedCategory, setSelectedCategory] = usePersistedState<string>(
+    'biensi:filter:metricsTable:category',
+    'Semua',
+    (v): v is string => typeof v === 'string'
+  );
   const [sortField] = useState<'no' | 'name' | 'category'>('no');
   const [sortDirection] = useState<'asc' | 'desc'>('asc');
 

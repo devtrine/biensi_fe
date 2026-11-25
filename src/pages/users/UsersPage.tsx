@@ -14,6 +14,7 @@ import {
   AlertCircle,
 } from "lucide-react"
 import { useCurrentUser } from "../../hooks/use-auth"
+import { usePersistedState } from "../../hooks/use-persisted-state"
 import {
   useCreateUser,
   useDeleteUser,
@@ -68,9 +69,22 @@ export const UsersPage: React.FC = () => {
   const updateMutation = useUpdateUser()
   const deleteMutation = useDeleteUser()
 
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL")
-  const [roleFilter, setRoleFilter] = useState<string>("ALL")
+  const [searchQuery, setSearchQuery] = usePersistedState<string>(
+    "biensi:filter:users:search",
+    "",
+    (v): v is string => typeof v === "string"
+  )
+  const [statusFilter, setStatusFilter] = usePersistedState<"ALL" | "ACTIVE" | "INACTIVE">(
+    "biensi:filter:users:status",
+    "ALL",
+    (v): v is "ALL" | "ACTIVE" | "INACTIVE" =>
+      v === "ALL" || v === "ACTIVE" || v === "INACTIVE"
+  )
+  const [roleFilter, setRoleFilter] = usePersistedState<string>(
+    "biensi:filter:users:role",
+    "ALL",
+    (v): v is string => typeof v === "string"
+  )
 
   const [modalMode, setModalMode] = useState<"create" | "edit" | null>(null)
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null)

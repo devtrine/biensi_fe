@@ -147,9 +147,27 @@ export interface ImportMonthStatus {
   status: "SUDAH_DIINPUT" | "BELUM_DIINPUT"
   isInputted: boolean
   fileName: string | null
+  files?: string[]
   totalRecords: number
   lastBatchId: string | null
   uploadedAt: string | null
+}
+
+export interface ReimportWarningInfo {
+  isDuplicateFile: boolean
+  isDbDuplicate: boolean
+  canReimport: boolean
+  fileName: string
+  matchedPeriods: Array<{
+    key: string
+    year: number
+    month: number
+    label: string
+    fileName: string
+    uploadedAt: string | null
+    totalRecords: number
+  }>
+  message: string
 }
 
 export interface ImportYearlyStatusResponse {
@@ -186,6 +204,7 @@ export interface ImportValidationReport {
   canProceed: boolean
   resolvedEndpoint?: string
   periodPolicy?: PeriodPolicyInfo | null
+  reimportWarning?: ReimportWarningInfo | null
   summary: {
     module: string
     fileName: string
@@ -315,13 +334,15 @@ export async function validateImportFile(
 export async function uploadToEndpoint(
   endpoint: string,
   file: File,
-  confirmStep: number = 0
+  confirmStep: number = 0,
+  allowReimport: boolean = false
 ): Promise<{
   success: boolean
   message: string
   fileName?: string
   periods?: DetectedPeriodItem[]
   requiresConfirmation?: boolean
+  requiresReimportConfirmation?: boolean
   confirmStep?: number
   totalConfirmSteps?: number
   errors?: string[]
@@ -331,10 +352,16 @@ export async function uploadToEndpoint(
   if (confirmStep > 0) {
     formData.append("confirmStep", String(confirmStep))
   }
+  if (allowReimport) {
+    formData.append("allowReimport", "true")
+  }
 
+  const queryParts: string[] = []
+  if (confirmStep > 0) queryParts.push(`confirmStep=${confirmStep}`)
+  if (allowReimport) queryParts.push("allowReimport=true")
   const targetUrl =
-    confirmStep > 0
-      ? `${endpoint}${endpoint.includes("?") ? "&" : "?"}confirmStep=${confirmStep}`
+    queryParts.length > 0
+      ? `${endpoint}${endpoint.includes("?") ? "&" : "?"}${queryParts.join("&")}`
       : endpoint
 
   const { data } = await api.post<ApiResponse<any> & Record<string, any>>(targetUrl, formData, {
@@ -353,6 +380,7 @@ export async function uploadToEndpoint(
     fileName: data?.data?.fileName || data?.fileName || file.name,
     periods: rawPeriods,
     requiresConfirmation: Boolean(data?.requiresConfirmation),
+    requiresReimportConfirmation: Boolean(data?.requiresReimportConfirmation),
     confirmStep: data?.confirmStep,
     totalConfirmSteps: data?.totalConfirmSteps,
     errors: errorsList.length > 0 ? errorsList : undefined,
@@ -361,7 +389,8 @@ export async function uploadToEndpoint(
 
 async function uploadSpCombined(
   file: File,
-  confirmStep: number = 0
+  confirmStep: number = 0,
+  allowReimport: boolean = false
 ): Promise<{
   success: boolean
   message: string
@@ -389,7 +418,7 @@ async function uploadSpCombined(
 
   for (const item of spEndpoints) {
     try {
-      const res = await uploadToEndpoint(item.endpoint, file, confirmStep)
+      const res = await uploadToEndpoint(item.endpoint, file, confirmStep, allowReimport)
       anyResponded = true
       if (!resolvedFileName && res.fileName) resolvedFileName = res.fileName
       if (!resolvedPeriods && res.periods) resolvedPeriods = res.periods
@@ -512,7 +541,8 @@ export async function executeImport(
   file: File,
   onProgress?: (currentModule: string, index: number, total: number) => void,
   resolvedEndpoint?: string,
-  confirmStep: number = 0
+  confirmStep: number = 0,
+  allowReimport: boolean = false
 ): Promise<ImportResponseSummary> {
   if (targetKey === "auto") {
     return await importAllModules(file, onProgress)
@@ -532,8 +562,8 @@ export async function executeImport(
   try {
     const res =
       mod.key === "sp" && !resolvedEndpoint
-        ? await uploadSpCombined(file, confirmStep)
-        : await uploadToEndpoint(targetEndpoint, file, confirmStep)
+        ? await uploadSpCombined(file, confirmStep, allowReimport)
+        : await uploadToEndpoint(targetEndpoint, file, confirmStep, allowReimport)
 
     const isOk = res.success !== false
     const modErrors =
