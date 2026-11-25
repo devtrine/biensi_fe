@@ -168,17 +168,33 @@ export interface TemplateDefinition {
 }
 
 const TEMPLATE_DEFINITIONS: Record<string, TemplateDefinition> = {
-  employees: {
-    moduleKey: "employees",
-    fileName: "Template_Master_Demografi_Karyawan_Bulanan.xlsx",
+  demografi_ho: {
+    moduleKey: "demografi_ho",
+    fileName: "Template_Demografi_Karyawan_HO.xlsx",
     sheets: [
       {
         sheetName: "Master Data Demografi HO",
         rows: DEMOGRAFI_HO_TEMPLATE_ROWS
-      },
+      }
+    ]
+  },
+  demografi_store: {
+    moduleKey: "demografi_store",
+    fileName: "Template_Demografi_Karyawan_Toko.xlsx",
+    sheets: [
       {
         sheetName: "Demografi Toko",
         rows: DEMOGRAFI_TOKO_TEMPLATE_ROWS
+      }
+    ]
+  },
+  employees: {
+    moduleKey: "employees",
+    fileName: "Template_Demografi_Karyawan_HO.xlsx",
+    sheets: [
+      {
+        sheetName: "Master Data Demografi HO",
+        rows: DEMOGRAFI_HO_TEMPLATE_ROWS
       }
     ]
   },
@@ -1060,8 +1076,9 @@ export async function downloadExcelTemplate(moduleKey: string) {
   if (moduleKey === "auto") {
     const allSheets: { sheetName: string; rows: any[][] }[] = []
 
-    // 1. Master Data Demografi HO & Toko (50 rows data resmi yang dikirim user)
-    TEMPLATE_DEFINITIONS.employees.sheets.forEach((s) => allSheets.push(s))
+    // 1. Master Data Demografi HO & Toko
+    TEMPLATE_DEFINITIONS.demografi_ho.sheets.forEach((s) => allSheets.push(s))
+    TEMPLATE_DEFINITIONS.demografi_store.sheets.forEach((s) => allSheets.push(s))
 
     // 2. Turnover HO & Toko
     TEMPLATE_DEFINITIONS.movement.sheets.forEach((s) => allSheets.push(s))

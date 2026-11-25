@@ -1,8 +1,13 @@
 import { api } from "../lib/api/client"
 import type { ApiResponse } from "../types/api"
 
+export type ImportPeriodMode = "STRICT_SINGLE" | "MULTI_CONFIRM"
+
 export interface ImportModuleOption {
   key: string
+  backendModuleCode: string
+  validateModuleKey: string
+  periodMode: ImportPeriodMode
   label: string
   description: string
   endpoint: string
@@ -11,25 +16,33 @@ export interface ImportModuleOption {
 }
 
 export const IMPORT_MODULES: ImportModuleOption[] = [
-  // tahan dulu
-  // {
-  //   key: "auto",
-  //   label: "Sinkronisasi Penuh (Rekomendasi)",
-  //   description: "Unggah berkas induk HR_Monitoring_Dashboard v2.0 ke semua endpoint backend terkait secara otomatis.",
-  //   endpoint: "all",
-  //   category: "Semua Data",
-  //   iconName: "Sparkles",
-  // },
   {
-    key: "employees",
-    label: "Master Karyawan (HO & Toko)",
-    description: "Impor demografi karyawan per Bulan & Tahun, NIK, penempatan divisi/store, jabatan, tanggal kontrak, gaji pokok, dan BPJS.",
+    key: "demografi_ho",
+    backendModuleCode: "DEMOGRAFI_HO",
+    validateModuleKey: "employees",
+    periodMode: "STRICT_SINGLE",
+    label: "Demografi Karyawan HO",
+    description: "Impor demografi karyawan Head Office (wajib 1 bulan & 1 sheet per file Excel/CSV).",
+    endpoint: "/employees/import",
+    category: "Karyawan",
+    iconName: "Users",
+  },
+  {
+    key: "demografi_store",
+    backendModuleCode: "DEMOGRAFI_STORE",
+    validateModuleKey: "employees",
+    periodMode: "STRICT_SINGLE",
+    label: "Demografi Karyawan Toko",
+    description: "Impor demografi karyawan Store/Ritel (wajib 1 bulan & 1 sheet per file Excel/CSV).",
     endpoint: "/employees/import",
     category: "Karyawan",
     iconName: "Users",
   },
   {
     key: "movement",
+    backendModuleCode: "MOVEMENT",
+    validateModuleKey: "movement",
+    periodMode: "MULTI_CONFIRM",
     label: "Turnover & Pergerakan Karyawan",
     description: "Impor catatan turnover voluntary dan non-voluntary, resign SOP, PHK, efisiensi, dan habis kontrak.",
     endpoint: "/movement/bulk-upload",
@@ -38,6 +51,9 @@ export const IMPORT_MODULES: ImportModuleOption[] = [
   },
   {
     key: "compliance",
+    backendModuleCode: "COMPLIANCE",
+    validateModuleKey: "compliance",
+    periodMode: "MULTI_CONFIRM",
     label: "Perijinan Ketenagakerjaan (WLKP, PP & K3)",
     description: "Impor matriks perijinan ketenagakerjaan (WLKP, PP, K3): entitas, nama toko, dokumen/perizinan, masa berlaku, PIC, dan status.",
     endpoint: "/compilance/import",
@@ -46,6 +62,9 @@ export const IMPORT_MODULES: ImportModuleOption[] = [
   },
   {
     key: "sp",
+    backendModuleCode: "SP",
+    validateModuleKey: "sp",
+    periodMode: "MULTI_CONFIRM",
     label: "Surat Peringatan Disiplin (SP)",
     description: "Impor rekap & detail Surat Peringatan (Jumlah SP Aktif & Jumlah SP Non Aktif) untuk HO & Store.",
     endpoint: "/disciplinary/import-sp",
@@ -54,6 +73,9 @@ export const IMPORT_MODULES: ImportModuleOption[] = [
   },
   {
     key: "fraud",
+    backendModuleCode: "FRAUD",
+    validateModuleKey: "fraud",
+    periodMode: "MULTI_CONFIRM",
     label: "Kasus Fraud & Selisih Opname",
     description: "Impor temuan audit selisih stock opname (BAKB) dan investigasi kecurangan transaksi.",
     endpoint: "/disciplinary/import-fraud",
@@ -62,6 +84,9 @@ export const IMPORT_MODULES: ImportModuleOption[] = [
   },
   {
     key: "bipartit",
+    backendModuleCode: "BIPARTIT",
+    validateModuleKey: "bipartit",
+    periodMode: "MULTI_CONFIRM",
     label: "Hubungan Industrial (Bipartit & Mediasi)",
     description: "Impor catatan perselisihan hubungan industrial, proses mediasi Disnaker, dan status penyelesaian.",
     endpoint: "/disciplinary/import-bipartit",
@@ -70,6 +95,9 @@ export const IMPORT_MODULES: ImportModuleOption[] = [
   },
   {
     key: "attendance",
+    backendModuleCode: "ATTENDANCE",
+    validateModuleKey: "attendance",
+    periodMode: "MULTI_CONFIRM",
     label: "Data Absensi & Kehadiran Bulanan",
     description: "Impor rekapitulasi kehadiran, sakit, izin, cuti tahunan, dan mangkir per bulan untuk HQ dan Toko.",
     endpoint: "/reporting-monthly/bulk-attendance",
@@ -78,6 +106,9 @@ export const IMPORT_MODULES: ImportModuleOption[] = [
   },
   {
     key: "sales",
+    backendModuleCode: "SALES",
+    validateModuleKey: "sales",
+    periodMode: "MULTI_CONFIRM",
     label: "Target & Realisasi Penjualan (Sales)",
     description: "Impor kuantiti dan omset penjualan bersih aktual per gerai toko ritel bulanan.",
     endpoint: "/reporting-monthly/bulk-sales",
@@ -86,11 +117,75 @@ export const IMPORT_MODULES: ImportModuleOption[] = [
   },
 ]
 
+export interface DetectedPeriodItem {
+  key: string
+  year: number
+  month: number
+  label: string
+  count: number
+  sampleRows?: string[]
+}
+
+export interface PeriodPolicyInfo {
+  allowed: boolean
+  httpStatus: number
+  requiresConfirmation: boolean
+  confirmStep?: number
+  totalConfirmSteps?: number
+  isMultiMonth?: boolean
+  code?: string
+  message?: string
+  primaryPeriod?: DetectedPeriodItem | null
+  periods: DetectedPeriodItem[]
+}
+
+export interface ImportMonthStatus {
+  year: number
+  month: number
+  monthName: string
+  periodId: string | null
+  status: "SUDAH_DIINPUT" | "BELUM_DIINPUT"
+  isInputted: boolean
+  fileName: string | null
+  totalRecords: number
+  lastBatchId: string | null
+  uploadedAt: string | null
+}
+
+export interface ImportYearlyStatusResponse {
+  module: string
+  year: number
+  summary: {
+    inputtedMonths: number
+    uninputtedMonths: number
+  }
+  months: ImportMonthStatus[]
+}
+
+export interface ImportHistoryItem {
+  id: string
+  module: string | null
+  periodId: string | null
+  periodYear: number | null
+  periodMonth: number | null
+  fileName: string
+  sourceType: string | null
+  status: string | null
+  totalRows: number | null
+  successRows: number | null
+  failedRows: number | null
+  startedAt: string | null
+  completedAt: string | null
+  createdAt: string | null
+  period?: { id: string; year: number; month: number } | null
+}
+
 export interface ImportValidationReport {
   success: boolean
   dryRun: boolean
   canProceed: boolean
   resolvedEndpoint?: string
+  periodPolicy?: PeriodPolicyInfo | null
   summary: {
     module: string
     fileName: string
@@ -118,12 +213,22 @@ export interface ImportResultItem {
   endpoint: string
   success: boolean
   message: string
+  fileName?: string
+  periods?: DetectedPeriodItem[]
+  requiresConfirmation?: boolean
+  confirmStep?: number
+  totalConfirmSteps?: number
   errors?: string[]
 }
 
 export interface ImportResponseSummary {
   success: boolean
   message: string
+  fileName?: string
+  periods?: DetectedPeriodItem[]
+  requiresConfirmation?: boolean
+  confirmStep?: number
+  totalConfirmSteps?: number
   results: ImportResultItem[]
   errors?: string[]
 }
@@ -189,7 +294,7 @@ export async function validateImportFile(
     throw new Error(`Modul target "${targetKey}" tidak valid.`)
   }
 
-  if (mod.key === "sp") {
+  if (mod.validateModuleKey === "sp") {
     const detailReport = await postDryRun("sp", "/disciplinary/import-sp", file)
     if (detailReport.summary.totalRows > 0 || detailReport.canProceed) {
       return detailReport
@@ -204,36 +309,78 @@ export async function validateImportFile(
     return detailReport
   }
 
-  return await postDryRun(mod.key, mod.endpoint, file)
+  return await postDryRun(mod.validateModuleKey, mod.endpoint, file)
 }
 
 export async function uploadToEndpoint(
   endpoint: string,
-  file: File
-): Promise<{ success: boolean; message: string; errors?: string[] }> {
+  file: File,
+  confirmStep: number = 0
+): Promise<{
+  success: boolean
+  message: string
+  fileName?: string
+  periods?: DetectedPeriodItem[]
+  requiresConfirmation?: boolean
+  confirmStep?: number
+  totalConfirmSteps?: number
+  errors?: string[]
+}> {
   const formData = new FormData()
   formData.append("file", file)
+  if (confirmStep > 0) {
+    formData.append("confirmStep", String(confirmStep))
+  }
 
-  const { data } = await api.post<ApiResponse<any>>(endpoint, formData, {
+  const targetUrl =
+    confirmStep > 0
+      ? `${endpoint}${endpoint.includes("?") ? "&" : "?"}confirmStep=${confirmStep}`
+      : endpoint
+
+  const { data } = await api.post<ApiResponse<any> & Record<string, any>>(targetUrl, formData, {
     headers: { "Content-Type": "multipart/form-data" },
   })
 
   const errorsList = extractErrorList(data)
+  const rawPeriods: DetectedPeriodItem[] | undefined =
+    data?.data?.periods ||
+    data?.periods ||
+    (data?.data?.period ? [data.data.period] : undefined)
 
   return {
     success: data?.success ?? true,
     message: data?.message || "File berhasil diproses oleh backend.",
+    fileName: data?.data?.fileName || data?.fileName || file.name,
+    periods: rawPeriods,
+    requiresConfirmation: Boolean(data?.requiresConfirmation),
+    confirmStep: data?.confirmStep,
+    totalConfirmSteps: data?.totalConfirmSteps,
     errors: errorsList.length > 0 ? errorsList : undefined,
   }
 }
 
 async function uploadSpCombined(
-  file: File
-): Promise<{ success: boolean; message: string; errors?: string[] }> {
+  file: File,
+  confirmStep: number = 0
+): Promise<{
+  success: boolean
+  message: string
+  fileName?: string
+  periods?: DetectedPeriodItem[]
+  requiresConfirmation?: boolean
+  confirmStep?: number
+  totalConfirmSteps?: number
+  errors?: string[]
+}> {
   const messages: string[] = []
   const errors: string[] = []
   let anySuccess = false
   let anyResponded = false
+  let resolvedFileName: string | undefined
+  let resolvedPeriods: DetectedPeriodItem[] | undefined
+  let needsConfirm = false
+  let nextConfirmStep: number | undefined
+  let totalConfirmSteps: number | undefined
 
   const spEndpoints = [
     { endpoint: "/disciplinary/import-sp", label: "Detail SP" },
@@ -242,8 +389,15 @@ async function uploadSpCombined(
 
   for (const item of spEndpoints) {
     try {
-      const res = await uploadToEndpoint(item.endpoint, file)
+      const res = await uploadToEndpoint(item.endpoint, file, confirmStep)
       anyResponded = true
+      if (!resolvedFileName && res.fileName) resolvedFileName = res.fileName
+      if (!resolvedPeriods && res.periods) resolvedPeriods = res.periods
+      if (res.requiresConfirmation) {
+        needsConfirm = true
+        nextConfirmStep = res.confirmStep
+        totalConfirmSteps = res.totalConfirmSteps
+      }
 
       if (res.success !== false) {
         anySuccess = true
@@ -274,6 +428,11 @@ async function uploadSpCombined(
   return {
     success: anySuccess,
     message: messages.join(" • ") || errors[0] || "Gagal memproses berkas Surat Peringatan (SP).",
+    fileName: resolvedFileName || file.name,
+    periods: resolvedPeriods,
+    requiresConfirmation: needsConfirm || undefined,
+    confirmStep: nextConfirmStep,
+    totalConfirmSteps,
     errors: errors.length > 0 ? errors : undefined,
   }
 }
@@ -352,7 +511,8 @@ export async function executeImport(
   targetKey: string,
   file: File,
   onProgress?: (currentModule: string, index: number, total: number) => void,
-  resolvedEndpoint?: string
+  resolvedEndpoint?: string,
+  confirmStep: number = 0
 ): Promise<ImportResponseSummary> {
   if (targetKey === "auto") {
     return await importAllModules(file, onProgress)
@@ -372,8 +532,8 @@ export async function executeImport(
   try {
     const res =
       mod.key === "sp" && !resolvedEndpoint
-        ? await uploadSpCombined(file)
-        : await uploadToEndpoint(targetEndpoint, file)
+        ? await uploadSpCombined(file, confirmStep)
+        : await uploadToEndpoint(targetEndpoint, file, confirmStep)
 
     const isOk = res.success !== false
     const modErrors =
@@ -386,6 +546,11 @@ export async function executeImport(
     return {
       success: isOk,
       message: res.message,
+      fileName: res.fileName || file.name,
+      periods: res.periods,
+      requiresConfirmation: res.requiresConfirmation,
+      confirmStep: res.confirmStep,
+      totalConfirmSteps: res.totalConfirmSteps,
       results: [
         {
           moduleKey: mod.key,
@@ -393,6 +558,11 @@ export async function executeImport(
           endpoint: targetEndpoint,
           success: isOk,
           message: res.message,
+          fileName: res.fileName || file.name,
+          periods: res.periods,
+          requiresConfirmation: res.requiresConfirmation,
+          confirmStep: res.confirmStep,
+          totalConfirmSteps: res.totalConfirmSteps,
           errors: modErrors,
         },
       ],
@@ -420,4 +590,29 @@ export async function executeImport(
     }
     throw err
   }
+}
+
+export async function getImportYearlyStatus(
+  moduleCode: string,
+  year: number
+): Promise<ImportYearlyStatusResponse> {
+  const { data } = await api.get<ApiResponse<ImportYearlyStatusResponse>>(
+    `/import/status?module=${encodeURIComponent(moduleCode)}&year=${year}`
+  )
+  return data.data
+}
+
+export async function getImportHistory(
+  moduleCode?: string,
+  year?: number,
+  limit: number = 20
+): Promise<ImportHistoryItem[]> {
+  const params = new URLSearchParams()
+  if (moduleCode) params.append("module", moduleCode)
+  if (year) params.append("year", String(year))
+  params.append("limit", String(limit))
+  const { data } = await api.get<ApiResponse<ImportHistoryItem[]>>(
+    `/import/history?${params.toString()}`
+  )
+  return Array.isArray(data?.data) ? data.data : []
 }

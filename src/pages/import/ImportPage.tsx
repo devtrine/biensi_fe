@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from "react"
+import React, { useState, useRef, useMemo, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   UploadCloud,
@@ -20,16 +20,33 @@ import {
   ShieldCheck,
   Database,
   FileWarning,
+  Calendar,
 } from "lucide-react"
 import {
   IMPORT_MODULES,
   type ImportModuleOption,
 } from "../../services/import.service"
-import { useImportExcel, useValidateImport } from "../../hooks/use-import"
+import {
+  useImportExcel,
+  useImportYearlyStatus,
+  useValidateImport,
+} from "../../hooks/use-import"
 import { downloadExcelTemplate } from "../../services/template.service"
 import { useCurrentUser } from "../../hooks/use-auth"
 import { hasPermission } from "../../lib/permissions"
 import { AccessDeniedCard } from "../../components/ui/AccessDeniedCard"
+
+const MONTH_NAMES_ID = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+]
+
+function formatPeriodKeyLabel(periodKey: string): string {
+  const [yStr, mStr] = periodKey.split("-")
+  const m = Number(mStr)
+  if (!yStr || !m || m < 1 || m > 12) return periodKey
+  return `${MONTH_NAMES_ID[m - 1]} ${yStr}`
+}
 
 export const ImportPage: React.FC = () => {
   const navigate = useNavigate()
@@ -40,14 +57,16 @@ export const ImportPage: React.FC = () => {
     hasPermission(currentUser, "import", "view")
 
   const [selectedModuleKey, setSelectedModuleKey] = useState<string>(
-    IMPORT_MODULES[0]?.key || "employees"
+    IMPORT_MODULES[0]?.key || "demografi_ho"
   )
+  const [statusYear, setStatusYear] = useState<number>(() => new Date().getFullYear())
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState<boolean>(false)
   const [clientValidationNotice, setClientValidationNotice] = useState<string | null>(null)
   const [isCopied, setIsCopied] = useState<boolean>(false)
   const [isDetailsOpen, setIsDetailsOpen] = useState<boolean>(true)
   const [isSubmittedCurrentFile, setIsSubmittedCurrentFile] = useState<boolean>(false)
+  const [multiMonthConfirmStage, setMultiMonthConfirmStage] = useState<0 | 1 | 2>(0)
 
   const {
     mutate: runValidate,
@@ -73,6 +92,59 @@ export const ImportPage: React.FC = () => {
   const currentModule: ImportModuleOption =
     IMPORT_MODULES.find((m) => m.key === selectedModuleKey) || IMPORT_MODULES[0]
 
+  const effectiveStatusModuleCode =
+    currentModule.key === "sp" && validationReport?.resolvedEndpoint?.includes("sp-rekap")
+      ? "SP_REKAP"
+      : currentModule.backendModuleCode
+
+  const {
+    data: yearlyStatus,
+    isLoading: isLoadingStatus,
+    refetch: refetchYearlyStatus,
+  } = useImportYearlyStatus(effectiveStatusModuleCode, statusYear)
+
+  const statusYearOptions = useMemo(() => {
+    const nowYear = new Date().getFullYear()
+    const years = new Set<number>([nowYear - 2, nowYear - 1, nowYear, nowYear + 1, statusYear])
+    ;(validationReport?.summary?.detectedPeriods || []).forEach((pk) => {
+      const y = Number(pk.split("-")[0])
+      if (y >= 2020 && y <= 2100) years.add(y)
+    })
+    return Array.from(years).sort((a, b) => b - a)
+  }, [statusYear, validationReport])
+
+  useEffect(() => {
+    const firstKey = validationReport?.summary?.detectedPeriods?.[0]
+    if (firstKey) {
+      const y = Number(firstKey.split("-")[0])
+      if (y >= 2020 && y <= 2100) {
+        setStatusYear(y)
+      }
+    }
+  }, [validationReport])
+
+  const detectedPeriodsSet = useMemo(() => {
+    return new Set(validationReport?.summary?.detectedPeriods || [])
+  }, [validationReport])
+
+  const isMultiMonthGeneral = useMemo(() => {
+    if (currentModule.periodMode !== "MULTI_CONFIRM" || !validationReport?.canProceed) {
+      return false
+    }
+    const detectedCount = validationReport.summary?.detectedPeriods?.length ?? 0
+    return Boolean(validationReport.periodPolicy?.requiresConfirmation) || detectedCount > 1
+  }, [currentModule.periodMode, validationReport])
+
+  const isDemographyPolicyRejected = useMemo(() => {
+    if (currentModule.periodMode !== "STRICT_SINGLE" || !validationReport) return false
+    const code = validationReport.periodPolicy?.code
+    return (
+      !validationReport.canProceed &&
+      Boolean(validationReport.periodPolicy && !validationReport.periodPolicy.allowed) &&
+      (code === "MULTI_SHEET_NOT_ALLOWED" || code === "DEMOGRAPHY_MULTI_MONTH_REJECTED")
+    )
+  }, [currentModule.periodMode, validationReport])
+
   const isBusy = isValidating || isPending
 
   const currentStep: 1 | 2 | 3 = useMemo(() => {
@@ -85,6 +157,7 @@ export const ImportPage: React.FC = () => {
     resetMutation()
     resetValidation()
     setIsSubmittedCurrentFile(false)
+    setMultiMonthConfirmStage(0)
     setIsDetailsOpen(true)
     runValidate({ targetKey: moduleKey, file })
   }
@@ -146,16 +219,23 @@ export const ImportPage: React.FC = () => {
     }
   }
 
-  const handleConfirmImport = () => {
+  const handleConfirmImport = (confirmStepOverride?: number) => {
     if (!selectedFile || !validationReport?.canProceed || isBusy || isSubmittedCurrentFile) {
       return
     }
 
+    if (isMultiMonthGeneral && multiMonthConfirmStage < 2 && confirmStepOverride !== 2) {
+      setMultiMonthConfirmStage(2)
+      return
+    }
+
+    const finalConfirmStep = confirmStepOverride ?? (isMultiMonthGeneral ? 2 : 0)
     setIsSubmittedCurrentFile(true)
     runImport({
       targetKey: selectedModuleKey,
       file: selectedFile,
       resolvedEndpoint: validationReport.resolvedEndpoint,
+      confirmStep: finalConfirmStep,
     })
   }
 
@@ -165,6 +245,7 @@ export const ImportPage: React.FC = () => {
     setSelectedFile(null)
     setClientValidationNotice(null)
     setIsSubmittedCurrentFile(false)
+    setMultiMonthConfirmStage(0)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -371,18 +452,150 @@ export const ImportPage: React.FC = () => {
                 } ${locked ? "opacity-60 cursor-not-allowed" : ""}`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <FileSpreadsheet
-                      className={`w-4 h-4 ${isSelected ? "text-[#c8102e]" : "text-slate-400"}`}
+                      className={`w-4 h-4 shrink-0 ${isSelected ? "text-[#c8102e]" : "text-slate-400"}`}
                     />
-                    <span className="text-xs font-bold text-slate-900">{mod.label}</span>
+                    <span className="text-xs font-bold text-slate-900 truncate">{mod.label}</span>
                   </div>
-                  {isSelected && <Check className="w-4 h-4 text-[#c8102e] shrink-0" />}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        mod.periodMode === "STRICT_SINGLE"
+                          ? "bg-red-100 text-red-700"
+                          : "bg-slate-200/80 text-slate-600"
+                      }`}
+                    >
+                      {mod.periodMode === "STRICT_SINGLE" ? "1 Bulan" : "Multi-Bulan"}
+                    </span>
+                    {isSelected && <Check className="w-4 h-4 text-[#c8102e]" />}
+                  </div>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">
                   {mod.description}
                 </p>
               </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Status Input Data & Identifikasi File Excel per Periode (Jan - Des) */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-[#c8102e]" />
+              <span>Status Input &amp; Identifikasi File Excel — {currentModule.label}</span>
+            </h3>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Pantau bulan yang sudah atau belum diinput beserta nama file Excel sumbernya.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {yearlyStatus && (
+              <div className="flex items-center gap-1.5 text-[11px] font-bold">
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Sudah: {yearlyStatus.summary.inputtedMonths}/12
+                </span>
+                <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200">
+                  Belum: {yearlyStatus.summary.uninputtedMonths}
+                </span>
+              </div>
+            )}
+            <select
+              value={statusYear}
+              onChange={(e) => setStatusYear(Number(e.target.value))}
+              className="px-3 py-1.5 text-xs font-mono font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer"
+              aria-label="Pilih Tahun Status Import"
+            >
+              {statusYearOptions.map((yr) => (
+                <option key={yr} value={yr}>
+                  Tahun {yr}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => refetchYearlyStatus()}
+              className="p-1.5 text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer"
+              title="Segarkan status periode"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoadingStatus ? "animate-spin" : ""}`} />
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+          {(yearlyStatus?.months ||
+            MONTH_NAMES_ID.map((monthName, idx) => ({
+              year: statusYear,
+              month: idx + 1,
+              monthName,
+              periodId: null,
+              status: "BELUM_DIINPUT" as const,
+              isInputted: false,
+              fileName: null,
+              totalRecords: 0,
+              lastBatchId: null,
+              uploadedAt: null,
+            }))
+          ).map((m) => {
+            const pKey = `${statusYear}-${String(m.month).padStart(2, "0")}`
+            const isTargetedBySelectedFile = Boolean(selectedFile) && detectedPeriodsSet.has(pKey)
+            return (
+              <div
+                key={m.month}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  isTargetedBySelectedFile
+                    ? "border-blue-400 bg-blue-50/50 ring-2 ring-blue-400/20"
+                    : m.isInputted
+                      ? "border-emerald-200 bg-emerald-50/40"
+                      : "border-slate-200 bg-slate-50/50"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-xs font-bold text-slate-900">{m.monthName}</span>
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                      m.isInputted
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    {m.isInputted ? "Sudah" : "Belum"}
+                  </span>
+                </div>
+
+                {m.isInputted ? (
+                  <div className="mt-1.5 space-y-0.5">
+                    <div
+                      className="text-[11px] font-mono text-slate-800 truncate font-medium"
+                      title={m.fileName || undefined}
+                    >
+                      {m.fileName || "Data tersimpan"}
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      {m.totalRecords} baris
+                      {m.uploadedAt
+                        ? ` • ${new Date(m.uploadedAt).toLocaleDateString("id-ID")}`
+                        : ""}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-1.5 text-[10px] text-slate-400">Belum ada data</div>
+                )}
+
+                {isTargetedBySelectedFile && selectedFile && (
+                  <div
+                    className="mt-1.5 px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-mono truncate"
+                    title={`File dipilih: ${selectedFile.name}`}
+                  >
+                    File baru: {selectedFile.name}
+                  </div>
+                )}
+              </div>
             )
           })}
         </div>
@@ -596,10 +809,16 @@ export const ImportPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Info Sheet & Periode Terdeteksi */}
+              {/* Info File, Sheet & Periode Terdeteksi */}
               {((validationReport.summary.sheets?.length ?? 0) > 0 ||
-                (validationReport.summary.detectedPeriods?.length ?? 0) > 0) && (
-                <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-slate-600">
+                (validationReport.summary.detectedPeriods?.length ?? 0) > 0 ||
+                selectedFile) && (
+                <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-slate-700">
+                  {selectedFile && (
+                    <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-800 border border-blue-200 font-semibold">
+                      File Excel: {selectedFile.name}
+                    </span>
+                  )}
                   {(validationReport.summary.sheets?.length ?? 0) > 0 && (
                     <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200">
                       Sheet: {validationReport.summary.sheets.join(", ")}
@@ -607,9 +826,41 @@ export const ImportPage: React.FC = () => {
                   )}
                   {(validationReport.summary.detectedPeriods?.length ?? 0) > 0 && (
                     <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200">
-                      Periode: {validationReport.summary.detectedPeriods.join(", ")}
+                      Periode:{" "}
+                      {validationReport.summary.detectedPeriods
+                        .map(formatPeriodKeyLabel)
+                        .join(", ")}
                     </span>
                   )}
+                </div>
+              )}
+
+              {/* Penolakan Keras Khusus Demografi (Multi-Bulan / Multi-Sheet) */}
+              {isDemographyPolicyRejected && validationReport.periodPolicy && (
+                <div className="p-4 rounded-xl border-2 border-red-300 bg-red-50 space-y-2">
+                  <div className="flex items-start gap-2.5">
+                    <XCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-black text-red-900 uppercase tracking-wide">
+                        Upload Ditolak — Aturan Ketat Module Demografi (Wajib 1 Bulan / 1 Sheet)
+                      </h4>
+                      <p className="text-xs text-red-800 leading-relaxed">
+                        {validationReport.periodPolicy.message}
+                      </p>
+                      {validationReport.periodPolicy.periods.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {validationReport.periodPolicy.periods.map((p) => (
+                            <span
+                              key={p.key}
+                              className="px-2 py-0.5 rounded bg-red-100 text-red-900 text-[11px] font-mono"
+                            >
+                              {p.label} ({p.count} baris)
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -730,8 +981,116 @@ export const ImportPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Jika Lolos 100% -> Panel Konfirmasi Eksplisit User (Tahap 2) */}
-              {validationReport.canProceed && (
+              {/* Jika Lolos 100% -> Panel Konfirmasi Eksplisit User (Tahap 2: Normal atau Verifikasi Ganda Multi-Bulan) */}
+              {validationReport.canProceed && isMultiMonthGeneral && (
+                <div
+                  className={`p-5 rounded-xl border-2 space-y-4 ${
+                    multiMonthConfirmStage === 2
+                      ? "border-red-400 bg-red-50/40"
+                      : "border-amber-300 bg-amber-50/60"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                        multiMonthConfirmStage === 2
+                          ? "bg-red-100 text-red-700"
+                          : "bg-amber-100 text-amber-700"
+                      }`}
+                    >
+                      <AlertTriangle className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-2 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                            multiMonthConfirmStage === 2
+                              ? "bg-red-600 text-white"
+                              : "bg-amber-600 text-white"
+                          }`}
+                        >
+                          Verifikasi Ganda Multi-Bulan — Tahap{" "}
+                          {multiMonthConfirmStage === 2 ? "2/2" : "1/2"}
+                        </span>
+                        <span className="text-xs font-mono text-slate-700">
+                          File: <strong>{selectedFile?.name}</strong>
+                        </span>
+                      </div>
+
+                      <h3 className="text-sm font-black text-slate-900">
+                        {multiMonthConfirmStage === 2
+                          ? "Konfirmasi Akhir (Tahap 2/2): Simpan Data Lintas Bulan ke Database?"
+                          : "Apakah yakin ingin melanjutkan proses import meskipun terdapat perbedaan bulan pada data yang diinput?"}
+                      </h3>
+
+                      <p className="text-xs text-slate-700 leading-relaxed">
+                        {multiMonthConfirmStage === 2
+                          ? `Seluruh ${validationReport.summary.totalRows} baris dari file "${selectedFile?.name}" lintas ${validationReport.summary.detectedPeriods.length} bulan akan disimpan sekaligus ke database dan dicatat pada masing-masing periode.`
+                          : `Terdeteksi data lintas ${validationReport.summary.detectedPeriods.length} bulan dalam file "${selectedFile?.name}". Diperlukan 2 tahap konfirmasi sebelum data disimpan.`}
+                      </p>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {(validationReport.periodPolicy?.periods?.length
+                          ? validationReport.periodPolicy.periods.map((p) => p.label)
+                          : validationReport.summary.detectedPeriods.map(formatPeriodKeyLabel)
+                        ).map((lbl) => (
+                          <span
+                            key={lbl}
+                            className="px-2 py-0.5 rounded-md bg-white border border-amber-300 text-[11px] font-mono font-bold text-slate-800"
+                          >
+                            {lbl}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-2 border-t border-amber-200/70">
+                    {multiMonthConfirmStage === 2 ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setMultiMonthConfirmStage(1)}
+                          className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl cursor-pointer transition-colors flex items-center justify-center gap-2"
+                        >
+                          <ArrowLeft className="w-4 h-4" />
+                          <span>Kembali ke Tahap 1</span>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isPending || isSubmittedCurrentFile}
+                          onClick={() => handleConfirmImport(2)}
+                          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-[#c8102e] hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-xs transition-colors cursor-pointer"
+                        >
+                          <span>Ya, Saya Yakin — Simpan Sekarang (2/2)</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleReset}
+                          className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl cursor-pointer transition-colors flex items-center justify-center gap-2"
+                        >
+                          <ArrowLeft className="w-4 h-4" />
+                          <span>Batalkan Upload</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMultiMonthConfirmStage(2)}
+                          className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-xs transition-colors cursor-pointer"
+                        >
+                          <span>Ya, Lanjutkan (Konfirmasi 1/2)</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {validationReport.canProceed && !isMultiMonthGeneral && (
                 <div className="p-5 rounded-xl border-2 border-emerald-300 bg-emerald-50/50 space-y-4">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
@@ -742,7 +1101,8 @@ export const ImportPage: React.FC = () => {
                         Berkas 100% Aman — Menunggu Konfirmasi Anda
                       </h3>
                       <p className="text-xs text-emerald-900/80 leading-relaxed">
-                        <strong>{validationReport.summary.totalRows} baris</strong> untuk modul{" "}
+                        <strong>{validationReport.summary.totalRows} baris</strong> dari file{" "}
+                        <strong className="font-mono">{selectedFile?.name}</strong> untuk modul{" "}
                         <strong>{currentModule.label}</strong> lolos pengecekan tanpa typo, error format,
                         maupun duplikat di file &amp; database. Belum ada data yang disimpan sampai Anda
                         menekan tombol konfirmasi di bawah.
@@ -762,7 +1122,7 @@ export const ImportPage: React.FC = () => {
                     <button
                       type="button"
                       disabled={isPending || isSubmittedCurrentFile}
-                      onClick={handleConfirmImport}
+                      onClick={() => handleConfirmImport(0)}
                       className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-xs transition-colors cursor-pointer"
                     >
                       <span>Lanjutkan &amp; Impor Sekarang</span>
@@ -827,6 +1187,25 @@ export const ImportPage: React.FC = () => {
                   : "Impor 100% Berhasil Disimpan!"}
             </h2>
             <p className="text-xs text-slate-600 max-w-xl mx-auto">{importResult.message}</p>
+            {(importResult.fileName || selectedFile) && (
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1 text-xs font-mono">
+                <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-800">
+                  File: {importResult.fileName || selectedFile?.name}
+                </span>
+                {(importResult.periods?.length
+                  ? importResult.periods.map((p) => p.label)
+                  : (validationReport?.summary?.detectedPeriods || []).map(formatPeriodKeyLabel)
+                ).length > 0 && (
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800">
+                    Periode:{" "}
+                    {(importResult.periods?.length
+                      ? importResult.periods.map((p) => p.label)
+                      : (validationReport?.summary?.detectedPeriods || []).map(formatPeriodKeyLabel)
+                    ).join(", ")}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {importResult.results && importResult.results.length > 0 && (
