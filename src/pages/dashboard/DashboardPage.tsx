@@ -150,10 +150,6 @@ export const DashboardPage: React.FC = () => {
       const n = Number(y)
       if (Number.isInteger(n) && n >= 2020 && n <= 2100) set.add(String(n))
     })
-    ;(dashboardResponse?.industrialAndSp?.byYear || []).forEach((item) => {
-      const n = Number(item.year)
-      if (Number.isInteger(n) && n >= 2020 && n <= 2100) set.add(String(n))
-    })
     return set
   }, [reportingPeriods, dashboardResponse])
 
