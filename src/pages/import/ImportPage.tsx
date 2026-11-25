@@ -21,9 +21,12 @@ import {
   Database,
   FileWarning,
   Calendar,
+  ArrowRightLeft,
 } from "lucide-react"
 import {
   IMPORT_MODULES,
+  inspectDemographyMutations,
+  type DemographyMutationSummary,
   type ImportModuleOption,
   type ReimportWarningInfo,
 } from "../../services/import.service"
@@ -76,6 +79,9 @@ export const ImportPage: React.FC = () => {
   const [isSubmittedCurrentFile, setIsSubmittedCurrentFile] = useState<boolean>(false)
   const [multiMonthConfirmStage, setMultiMonthConfirmStage] = useState<0 | 1 | 2>(0)
   const [reimportConfirmed, setReimportConfirmed] = useState<boolean>(false)
+  const [clientMutationSummary, setClientMutationSummary] = useState<DemographyMutationSummary | null>(null)
+  const [isMutationListOpen, setIsMutationListOpen] = useState<boolean>(true)
+  const mutationInspectSeqRef = useRef<number>(0)
 
   const {
     mutate: runValidate,
@@ -217,6 +223,13 @@ export const ImportPage: React.FC = () => {
   const isBusy = isValidating || isPending
   const isCommitReimportConfirm = Boolean(isSuccess && importResult?.requiresReimportConfirmation)
 
+  const effectiveMutationSummary: DemographyMutationSummary | null = useMemo(() => {
+    if (selectedModuleKey !== "demografi_store" && selectedModuleKey !== "demografi_ho") {
+      return null
+    }
+    return validationReport?.mutationSummary ?? clientMutationSummary
+  }, [selectedModuleKey, validationReport, clientMutationSummary])
+
   const currentStep: 0 | 1 | 2 | 3 = useMemo(() => {
     if (isCommitReimportConfirm) return 2
     if (isSuccess || isError) return 3
@@ -232,6 +245,16 @@ export const ImportPage: React.FC = () => {
     setMultiMonthConfirmStage(0)
     setReimportConfirmed(false)
     setIsDetailsOpen(true)
+    setClientMutationSummary(null)
+    setIsMutationListOpen(true)
+    const seq = ++mutationInspectSeqRef.current
+    if (moduleKey === "demografi_store" || moduleKey === "demografi_ho") {
+      inspectDemographyMutations(file).then((summary) => {
+        if (mutationInspectSeqRef.current === seq) {
+          setClientMutationSummary(summary)
+        }
+      })
+    }
     runValidate({ targetKey: moduleKey, file })
   }
 
@@ -346,6 +369,8 @@ export const ImportPage: React.FC = () => {
     setIsSubmittedCurrentFile(false)
     setMultiMonthConfirmStage(0)
     setReimportConfirmed(false)
+    mutationInspectSeqRef.current += 1
+    setClientMutationSummary(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -357,10 +382,18 @@ export const ImportPage: React.FC = () => {
     return [
       { key: "header", title: "Error Header / Typo Kolom", items: headerErrors || [], tone: "red" as const },
       { key: "row", title: "Error Data / Format Baris", items: rowErrors || [], tone: "red" as const },
-      { key: "fileDup", title: "Duplikat di Dalam Berkas Excel", items: fileDuplicates || [], tone: "amber" as const },
+      {
+        key: "fileDup",
+        title:
+          selectedModuleKey === "demografi_store"
+            ? "Duplikat di Dalam Berkas Excel (NIK & Toko Sama)"
+            : "Duplikat di Dalam Berkas Excel",
+        items: fileDuplicates || [],
+        tone: "amber" as const,
+      },
       { key: "dbDup", title: "Duplikat dengan Data di Database", items: dbDuplicates || [], tone: "amber" as const },
     ].filter((g) => g.items.length > 0)
-  }, [validationReport])
+  }, [validationReport, selectedModuleKey])
 
   const allValidationIssues = useMemo(
     () => validationIssueGroups.flatMap((g) => g.items.map((item) => `[${g.title}] ${item}`)),
@@ -879,6 +912,23 @@ export const ImportPage: React.FC = () => {
       {/* Tahap 1 & Tahap 2: Upload Dropzone, Pre-Check, & Konfirmasi User */}
       {!isSuccess && !isError && (
         <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/90 shadow-2xs space-y-6">
+          {selectedModuleKey === "demografi_store" && (
+            <div className="p-3.5 rounded-xl border border-slate-200 border-l-4 border-l-sky-500/75 bg-slate-50/70 flex items-start gap-2.5 text-xs text-slate-700">
+              <ArrowRightLeft className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
+              <div className="space-y-0.5 leading-relaxed">
+                <div className="font-bold text-slate-900">
+                  Aturan Mutasi Toko dalam Bulan yang Sama
+                </div>
+                <p className="text-slate-600">
+                  1 NIK diperbolehkan muncul lebih dari 1 kali dalam bulan yang sama selama{" "}
+                  <strong className="text-slate-800">Nama Toko berbeda</strong>. Pastikan baris{" "}
+                  <strong className="text-slate-800">toko tujuan akhir (terbaru)</strong> diletakkan di{" "}
+                  <strong className="text-slate-800">urutan baris paling bawah</strong> karena sistem memakai baris terakhir sebagai toko &amp; headcount aktif pada bulan tersebut.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -1114,6 +1164,91 @@ export const ImportPage: React.FC = () => {
                         .map(formatPeriodKeyLabel)
                         .join(", ")}
                     </span>
+                  )}
+                </div>
+              )}
+
+              {/* Preview Mutasi Lintas Toko (1 NIK di >1 Toko dalam Bulan yang Sama) */}
+              {effectiveMutationSummary && effectiveMutationSummary.mutatedEmployeeCount > 0 && (
+                <div className="rounded-xl border border-slate-200 border-l-4 border-l-sky-500/75 bg-white overflow-hidden">
+                  <div className="p-3.5 sm:px-4 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/70">
+                    <div className="flex flex-wrap items-center gap-2 min-w-0">
+                      <ArrowRightLeft className="w-4 h-4 text-sky-600 shrink-0" />
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-sky-50 text-sky-800 border border-sky-200/80">
+                        Mutasi Lintas Toko Terdeteksi
+                      </span>
+                      <span className="text-xs font-bold text-slate-900">
+                        {effectiveMutationSummary.mutatedEmployeeCount} NIK ({effectiveMutationSummary.extraRowCount} baris mutasi)
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[11px] font-mono text-slate-700">
+                        Snapshot Aktif Dashboard: {effectiveMutationSummary.uniqueHeadcount} karyawan unik
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsMutationListOpen((prev) => !prev)}
+                      className="p-1 rounded-lg text-slate-600 hover:bg-slate-200/70 cursor-pointer shrink-0"
+                      aria-label="Toggle daftar mutasi toko"
+                    >
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform ${
+                          isMutationListOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="px-4 py-2.5 text-xs text-slate-600 bg-white border-b border-slate-100 leading-relaxed">
+                    NIK berikut tercatat di lebih dari 1 toko pada bulan yang sama. Sistem mengizinkan impor ini dan otomatis menjadikan{" "}
+                    <strong className="text-slate-900">baris paling bawah di Excel sebagai toko aktif akhir</strong>{" "}
+                    (1 NIK tetap dihitung 1 headcount aktif di Dashboard). Pastikan urutan{" "}
+                    <strong className="text-slate-900">Toko Asal → Toko Aktif Akhir</strong> di bawah sudah sesuai sebelum konfirmasi.
+                  </div>
+
+                  {isMutationListOpen && (
+                    <div className="p-3.5 space-y-2 max-h-60 overflow-y-auto bg-slate-50/40">
+                      {effectiveMutationSummary.items.map((item) => (
+                        <div
+                          key={`${item.employeeNo}|${item.periodKey}`}
+                          className="p-2.5 rounded-lg bg-white border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                        >
+                          <div className="flex flex-wrap items-center gap-2 min-w-0">
+                            <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono font-bold text-slate-800 shrink-0">
+                              {item.employeeNo}
+                            </span>
+                            <span className="font-bold text-slate-900 truncate">
+                              {item.fullName}
+                            </span>
+                            <span className="text-[11px] font-mono text-slate-500">
+                              ({formatPeriodKeyLabel(item.periodKey)})
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
+                            {item.occurrences.map((occ, occIdx) => {
+                              const isFinal = occIdx === item.occurrences.length - 1
+                              return (
+                                <React.Fragment key={`${occ.rowNum}-${occIdx}`}>
+                                  {occIdx > 0 && (
+                                    <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                  )}
+                                  <span
+                                    className={`px-2 py-0.5 rounded-md border ${
+                                      isFinal
+                                        ? "bg-emerald-50/80 text-emerald-800 border-emerald-200 font-bold"
+                                        : "bg-slate-50 text-slate-600 border-slate-200"
+                                    }`}
+                                  >
+                                    {occ.storeLabel} (Baris {occ.rowNum}
+                                    {isFinal ? " • Toko Aktif" : ""})
+                                  </span>
+                                </React.Fragment>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}
@@ -1453,6 +1588,19 @@ export const ImportPage: React.FC = () => {
                         <strong className="text-slate-900">{currentModule.label}</strong> lolos pengecekan tanpa typo, error format,
                         maupun duplikat di file &amp; database. Belum ada data yang disimpan sampai Anda
                         menekan tombol konfirmasi di bawah.
+                        {effectiveMutationSummary && effectiveMutationSummary.mutatedEmployeeCount > 0 && (
+                          <>
+                            {" "}Termasuk{" "}
+                            <strong className="text-slate-900">
+                              {effectiveMutationSummary.mutatedEmployeeCount} NIK mutasi lintas toko
+                            </strong>{" "}
+                            → tercatat sebagai{" "}
+                            <strong className="text-slate-900">
+                              {effectiveMutationSummary.uniqueHeadcount} headcount aktif unik
+                            </strong>{" "}
+                            (mengikuti toko pada baris terakhir).
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -1624,6 +1772,17 @@ export const ImportPage: React.FC = () => {
                   : "Impor 100% Berhasil Disimpan!"}
             </h2>
             <p className="text-xs text-slate-600 max-w-xl mx-auto">{importResult.message}</p>
+            {effectiveMutationSummary &&
+              effectiveMutationSummary.mutatedEmployeeCount > 0 &&
+              !allFailedCompletely && (
+                <p className="text-[11px] text-sky-700 bg-sky-50/70 border border-sky-200/80 rounded-lg px-3 py-1.5 max-w-xl mx-auto">
+                  Termasuk{" "}
+                  <strong>{effectiveMutationSummary.mutatedEmployeeCount} NIK mutasi lintas toko</strong>{" "}
+                  → tercatat sebagai{" "}
+                  <strong>{effectiveMutationSummary.uniqueHeadcount} headcount aktif unik</strong>{" "}
+                  di Dashboard (mengikuti toko pada baris terakhir di Excel).
+                </p>
+              )}
             {(importResult.fileName || selectedFile) && (
               <div className="flex flex-wrap items-center justify-center gap-2 pt-1 text-xs font-mono">
                 <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-800">

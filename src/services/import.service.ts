@@ -1,3 +1,4 @@
+import * as XLSX from "xlsx"
 import { api } from "../lib/api/client"
 import type { ApiResponse } from "../types/api"
 
@@ -33,7 +34,7 @@ export const IMPORT_MODULES: ImportModuleOption[] = [
     validateModuleKey: "employees",
     periodMode: "STRICT_SINGLE",
     label: "Demografi Karyawan Toko",
-    description: "Impor demografi karyawan Store/Ritel (wajib 1 bulan & 1 sheet per file Excel/CSV).",
+    description: "Impor demografi karyawan Store/Ritel (wajib 1 bulan & 1 sheet; NIK mutasi beda toko otomatis memakai baris terakhir sebagai toko aktif).",
     endpoint: "/employees/import",
     category: "Karyawan",
     iconName: "Users",
@@ -198,6 +199,30 @@ export interface ImportHistoryItem {
   period?: { id: string; year: number; month: number } | null
 }
 
+export interface DemographyMutationOccurrence {
+  rowNum: number
+  sheetName: string
+  storeLabel: string
+}
+
+export interface DemographyMutationItem {
+  employeeNo: string
+  fullName: string
+  periodKey: string
+  occurrences: DemographyMutationOccurrence[]
+  originStores: string[]
+  finalStore: string
+  finalRowNum: number
+}
+
+export interface DemographyMutationSummary {
+  totalValidRows: number
+  uniqueHeadcount: number
+  mutatedEmployeeCount: number
+  extraRowCount: number
+  items: DemographyMutationItem[]
+}
+
 export interface ImportValidationReport {
   success: boolean
   dryRun: boolean
@@ -205,6 +230,7 @@ export interface ImportValidationReport {
   resolvedEndpoint?: string
   periodPolicy?: PeriodPolicyInfo | null
   reimportWarning?: ReimportWarningInfo | null
+  mutationSummary?: DemographyMutationSummary | null
   summary: {
     module: string
     fileName: string
@@ -254,6 +280,313 @@ export interface ImportResponseSummary {
   totalConfirmSteps?: number
   results: ImportResultItem[]
   errors?: string[]
+}
+
+const DEMOGRAFI_MONTH_MAP: Record<string, number> = {
+  jan: 1, januari: 1, january: 1,
+  feb: 2, februari: 2, february: 2, peb: 2,
+  mar: 3, maret: 3, march: 3,
+  apr: 4, april: 4,
+  mei: 5, may: 5,
+  jun: 6, juni: 6, june: 6,
+  jul: 7, juli: 7, july: 7,
+  agu: 8, agustus: 8, aug: 8, august: 8, agt: 8,
+  sep: 9, september: 9, sept: 9,
+  okt: 10, oktober: 10, oct: 10, october: 10,
+  nov: 11, november: 11, nop: 11,
+  des: 12, desember: 12, dec: 12, december: 12,
+}
+
+const normHeaderKey = (v: unknown): string =>
+  String(v ?? "")
+    .replace(/\u00A0/g, " ")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toLowerCase()
+
+const getRowValByAliases = (row: Record<string, unknown>, ...aliases: string[]): unknown => {
+  const keys = Object.keys(row)
+  for (const alias of aliases) {
+    const target = normHeaderKey(alias)
+    const match = keys.find((k) => normHeaderKey(k) === target)
+    if (
+      match !== undefined &&
+      row[match] !== undefined &&
+      row[match] !== null &&
+      String(row[match]).trim() !== ""
+    ) {
+      return row[match]
+    }
+  }
+  return undefined
+}
+
+const cleanDemographyStoreName = (val: unknown): string | null => {
+  if (val === undefined || val === null) return null
+  const s = String(val).replace(/\u00A0/g, " ").trim().toUpperCase()
+  if (!s) return null
+  const ignore = [
+    "-", "TOTAL", "HO", "PUSAT", "KANTOR PUSAT", "HEAD OFFICE",
+    "N/A", "NA", "0", "NONE", "SEMUA", "NULL",
+  ]
+  if (
+    ignore.includes(s) ||
+    s.startsWith("HO ") ||
+    s.startsWith("HO-") ||
+    s.includes("HEAD OFFICE") ||
+    s.includes("KANTOR PUSAT")
+  ) {
+    return null
+  }
+  return s.replace(/\s+/g, " ")
+}
+
+const detectMonthYearFromLabel = (text: string): { year: number | null; month: number | null } | null => {
+  if (!text) return null
+  const lower = text.toLowerCase()
+  let year: number | null = null
+  const matchYear = lower.match(/\b(20[2-3]\d)\b/) || lower.match(/\b(20\d{2})\b/)
+  if (matchYear) year = parseInt(matchYear[1], 10)
+
+  let month: number | null = null
+  const sorted = Object.entries(DEMOGRAFI_MONTH_MAP).sort((a, b) => b[0].length - a[0].length)
+  for (const [mName, mNum] of sorted) {
+    if (new RegExp(`(?<![a-z])${mName}(?![a-z])`).test(lower)) {
+      month = mNum
+      break
+    }
+  }
+  return !month && !year ? null : { year, month }
+}
+
+const parseDemographyPeriodKey = (
+  rawMonth: unknown,
+  rawYear: unknown,
+  fallback: { year: number; month: number }
+): string => {
+  let month: number | null = null
+  let year: number | null = null
+
+  if (rawMonth instanceof Date && !isNaN(rawMonth.getTime()) && rawMonth.getFullYear() >= 2020) {
+    return `${rawMonth.getFullYear()}-${String(rawMonth.getMonth() + 1).padStart(2, "0")}`
+  }
+  if (typeof rawMonth === "number" && rawMonth >= 30000 && rawMonth <= 100000) {
+    const d = new Date(Math.round((rawMonth - 25569) * 86400 * 1000))
+    if (!isNaN(d.getTime()) && d.getUTCFullYear() >= 2020) {
+      return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`
+    }
+  }
+
+  if (rawYear !== undefined && rawYear !== null && String(rawYear).trim() !== "") {
+    const yrStr = String(rawYear).trim()
+    const yrMatch = yrStr.match(/\b(20\d{2})\b/)
+    if (yrMatch) {
+      year = parseInt(yrMatch[1], 10)
+    } else {
+      const yrNum = parseInt(yrStr, 10)
+      if (!isNaN(yrNum)) year = yrNum < 100 ? 2000 + yrNum : yrNum
+    }
+  }
+
+  if (rawMonth !== undefined && rawMonth !== null && String(rawMonth).trim() !== "") {
+    const mStr = String(rawMonth).trim().toLowerCase()
+    if (!year) {
+      const yrIn = mStr.match(/\b(20\d{2})\b/)
+      if (yrIn) year = parseInt(yrIn[1], 10)
+    }
+    const sorted = Object.entries(DEMOGRAFI_MONTH_MAP).sort((a, b) => b[0].length - a[0].length)
+    for (const [mName, mNum] of sorted) {
+      if (new RegExp(`(?<![a-z])${mName}(?![a-z])`).test(mStr)) {
+        month = mNum
+        break
+      }
+    }
+    if (!month) {
+      const iso = mStr.match(/^20\d{2}[-/](\d{1,2})$/)
+      if (iso) {
+        month = parseInt(iso[1], 10)
+      } else if (/^\d{1,2}$/.test(mStr)) {
+        const mNum = parseInt(mStr, 10)
+        if (mNum >= 1 && mNum <= 12) month = mNum
+      }
+    }
+  }
+
+  const finalYear = year && year >= 2020 && year <= 2100 ? year : fallback.year
+  const finalMonth = month && month >= 1 && month <= 12 ? month : fallback.month
+  return `${finalYear}-${String(finalMonth).padStart(2, "0")}`
+}
+
+/**
+ * Inspeksi client-side untuk mendeteksi 1 NIK yang muncul di >1 toko dalam bulan yang sama (kasus mutasi).
+ * Mengikuti aturan backend: baris paling bawah di Excel menjadi toko aktif akhir pada bulan tersebut.
+ */
+export async function inspectDemographyMutations(
+  file: File
+): Promise<DemographyMutationSummary | null> {
+  try {
+    const buffer = await file.arrayBuffer()
+    const workbook = XLSX.read(buffer, { type: "array" })
+    if (!workbook.SheetNames || workbook.SheetNames.length === 0) return null
+
+    let targetSheets = workbook.SheetNames.filter((name) => {
+      const l = name.toLowerCase()
+      return l.includes("demografi") || l.includes("karyawan") || l.includes("pegawai")
+    })
+    if (targetSheets.length === 0) {
+      targetSheets = workbook.SheetNames.filter((name) => {
+        const l = name.toLowerCase()
+        if (
+          [
+            "turnover", "kehadiran", "sales", "fraud", "kasus",
+            "phase", "wlkp", "critical", "visual", "panduan",
+          ].some((k) => l.includes(k))
+        ) {
+          return false
+        }
+        const preview = XLSX.utils.sheet_to_json<any[]>(workbook.Sheets[name], { header: 1 }).slice(0, 6)
+        const flat = preview.flat().map(normHeaderKey).join(" ")
+        return flat.includes("employeeno") || flat.includes("namakaryawan") || flat.includes("nik")
+      })
+    }
+    if (targetSheets.length === 0) targetSheets = [workbook.SheetNames[0]]
+
+    const now = new Date()
+    const filePeriodHint = detectMonthYearFromLabel(file.name)
+
+    interface ParsedMutationRow {
+      empNo: string
+      fullName: string
+      periodKey: string
+      storeKey: string
+      storeLabel: string
+      rowNum: number
+      sheetName: string
+    }
+
+    const parsedRows: ParsedMutationRow[] = []
+
+    for (const sheetName of targetSheets) {
+      const sheet = workbook.Sheets[sheetName]
+      const matrix = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1 })
+      if (matrix.length === 0) continue
+
+      let headerRowIdx = -1
+      for (let r = 0; r < Math.min(10, matrix.length); r++) {
+        const rowNorm = (matrix[r] || []).map(normHeaderKey)
+        if (rowNorm.some((c) => ["employeeno", "nik", "idkaryawan", "namakaryawan"].includes(c))) {
+          headerRowIdx = r
+          break
+        }
+      }
+      if (headerRowIdx === -1) continue
+
+      const titleHint = detectMonthYearFromLabel(
+        matrix.slice(0, Math.min(6, matrix.length)).flat().join(" ")
+      )
+      const sheetHint = detectMonthYearFromLabel(sheetName)
+      const fallbackPeriod = {
+        year: sheetHint?.year || titleHint?.year || filePeriodHint?.year || now.getFullYear(),
+        month: sheetHint?.month || titleHint?.month || filePeriodHint?.month || now.getMonth() + 1,
+      }
+
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { range: headerRowIdx })
+      rows.forEach((row, idx) => {
+        const rowNum = headerRowIdx + 2 + idx
+        const rawEmpNo = getRowValByAliases(row, "employeeno", "nik", "idkaryawan")
+        const rawName = getRowValByAliases(row, "namakaryawan", "nama", "name")
+        const empNoClean = String(rawEmpNo ?? "")
+          .trim()
+          .replace(/^['"`\s]+/, "")
+          .toUpperCase()
+        const nameClean = String(rawName ?? "")
+          .replace(/\u00A0/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .toUpperCase()
+
+        if (!empNoClean && !nameClean) return
+        if (
+          ["TOTAL", "SUM", "SUBTOTAL", "RATA-RATA", "1"].includes(empNoClean) &&
+          (!nameClean || nameClean === "TOTAL" || /^\d+$/.test(nameClean))
+        ) {
+          return
+        }
+        if (/^\d+$/.test(empNoClean) && /^\d+$/.test(nameClean)) return
+        if (empNoClean.length < 3) return
+
+        const rawBulan = getRowValByAliases(
+          row, "bulan", "month", "periode", "period", "bulantahun", "cutoff", "tanggal"
+        )
+        const rawTahun = getRowValByAliases(row, "tahun", "year", "periode", "period", "bulantahun")
+        const periodKey = parseDemographyPeriodKey(rawBulan, rawTahun, fallbackPeriod)
+
+        const store = cleanDemographyStoreName(
+          getRowValByAliases(row, "namatoko", "store", "storename", "showroom", "toko")
+        )
+        const storeKey = store || "HO"
+        const storeLabel = store || "HO (Kantor Pusat)"
+
+        parsedRows.push({
+          empNo: empNoClean,
+          fullName: nameClean || `KARYAWAN ${empNoClean}`,
+          periodKey,
+          storeKey,
+          storeLabel,
+          rowNum,
+          sheetName,
+        })
+      })
+    }
+
+    if (parsedRows.length === 0) return null
+
+    const grouped = new Map<string, ParsedMutationRow[]>()
+    for (const r of parsedRows) {
+      const k = `${r.empNo}|${r.periodKey}`
+      const list = grouped.get(k)
+      if (list) list.push(r)
+      else grouped.set(k, [r])
+    }
+
+    const items: DemographyMutationItem[] = []
+    let extraRowCount = 0
+
+    for (const group of grouped.values()) {
+      if (group.length < 2) continue
+      const distinctStores = new Set(group.map((g) => g.storeKey))
+      if (distinctStores.size < 2) continue
+
+      const finalRow = group[group.length - 1]
+      const occurrences: DemographyMutationOccurrence[] = group.map((g) => ({
+        rowNum: g.rowNum,
+        sheetName: g.sheetName,
+        storeLabel: g.storeLabel,
+      }))
+
+      extraRowCount += group.length - 1
+      items.push({
+        employeeNo: finalRow.empNo,
+        fullName: finalRow.fullName,
+        periodKey: finalRow.periodKey,
+        occurrences,
+        originStores: occurrences.slice(0, -1).map((o) => o.storeLabel),
+        finalStore: finalRow.storeLabel,
+        finalRowNum: finalRow.rowNum,
+      })
+    }
+
+    if (items.length === 0) return null
+
+    return {
+      totalValidRows: parsedRows.length,
+      uniqueHeadcount: grouped.size,
+      mutatedEmployeeCount: items.length,
+      extraRowCount,
+      items,
+    }
+  } catch {
+    return null
+  }
 }
 
 function extractErrorList(payload: any): string[] {
