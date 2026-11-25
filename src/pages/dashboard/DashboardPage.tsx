@@ -61,9 +61,6 @@ export const DashboardPage: React.FC = () => {
     () => String(currentCalendarYear),
     (v): v is string => typeof v === "string" && /^\d{4}$/.test(v)
   )
-  const [userManuallyPickedYear, setUserManuallyPickedYear] = useState(() =>
-    hasPersistedKey("biensi:filter:dashboard:year")
-  )
   const [selectedMonth, setSelectedMonth] = usePersistedState<string>(
     "biensi:filter:dashboard:month",
     () => String(new Date().getMonth() + 1),
@@ -161,31 +158,19 @@ export const DashboardPage: React.FC = () => {
   }, [reportingPeriods, dashboardResponse])
 
   const availableYears = useMemo(() => {
-    const yearSet = new Set<number>()
-    yearsWithDataSet.forEach((y) => yearSet.add(Number(y)))
-
-    // Pastikan tahun kalender berjalan & tahun yang sedang dipilih selalu ada
-    yearSet.add(currentCalendarYear)
-    const selNum = Number(selectedYear)
-    if (Number.isInteger(selNum) && selNum >= 2020 && selNum <= 2100) {
-      yearSet.add(selNum)
+    if (yearsWithDataSet.size === 0) {
+      return [String(currentCalendarYear)]
     }
 
-    // Jika data di database masih kurang dari 3 tahun, lengkapi rentang 3 tahun berjalan secara dinamis
-    if (yearSet.size < 3) {
-      const anchorYear = Math.max(currentCalendarYear, ...Array.from(yearSet))
-      yearSet.add(anchorYear)
-      yearSet.add(anchorYear - 1)
-      yearSet.add(anchorYear - 2)
-    }
-
-    return Array.from(yearSet)
+    return Array.from(yearsWithDataSet)
+      .map(Number)
+      .filter((y) => Number.isInteger(y) && y >= 2020 && y <= 2100)
       .sort((a, b) => b - a)
       .map(String)
-  }, [yearsWithDataSet, currentCalendarYear, selectedYear])
+  }, [yearsWithDataSet, currentCalendarYear])
 
   useEffect(() => {
-    if (userManuallyPickedYear || yearsWithDataSet.size === 0) return
+    if (yearsWithDataSet.size === 0) return
     if (!yearsWithDataSet.has(selectedYear)) {
       const sorted = Array.from(yearsWithDataSet)
         .map(Number)
@@ -194,7 +179,7 @@ export const DashboardPage: React.FC = () => {
         setSelectedYear(String(sorted[0]))
       }
     }
-  }, [yearsWithDataSet, selectedYear, userManuallyPickedYear])
+  }, [yearsWithDataSet, selectedYear, setSelectedYear])
 
   const queryClient = useQueryClient()
   const [isManualReloading, setIsManualReloading] = useState(false)
@@ -447,7 +432,6 @@ export const DashboardPage: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setSelectedYear(year)
-                      setUserManuallyPickedYear(true)
                       if (spYearFilter !== "ALL") {
                         setSpYearFilter(year)
                       }

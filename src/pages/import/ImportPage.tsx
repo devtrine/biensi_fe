@@ -216,11 +216,12 @@ export const ImportPage: React.FC = () => {
 
   const isBusy = isValidating || isPending
 
-  const currentStep: 1 | 2 | 3 = useMemo(() => {
+  const currentStep: 0 | 1 | 2 | 3 = useMemo(() => {
     if (isSuccess || isError) return 3
-    if ((validationReport?.canProceed || hasReimportAlert) && selectedFile && !isValidating) return 2
+    if (!selectedFile) return 0
+    if ((validationReport?.canProceed || hasReimportAlert) && !isValidating) return 2
     return 1
-  }, [isSuccess, isError, validationReport, hasReimportAlert, selectedFile, isValidating])
+  }, [isSuccess, isError, selectedFile, validationReport, hasReimportAlert, isValidating])
 
   const triggerValidation = (moduleKey: string, file: File) => {
     resetMutation()
@@ -458,39 +459,165 @@ export const ImportPage: React.FC = () => {
       </div>
 
       {/* Stepper 3 Tahap */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="bg-white px-6 py-5 rounded-2xl border border-slate-200/90 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-5 sm:gap-0">
           {[
             { num: 1, title: "Pilih & Cek Otomatis" },
             { num: 2, title: "Konfirmasi Impor" },
             { num: 3, title: "Hasil Impor" },
-          ].map((step) => {
-            const isDone = currentStep > step.num
-            const isActive = currentStep === step.num
+          ].map((step, idx, steps) => {
+            const step1Failed = Boolean(
+              selectedFile &&
+                !isValidating &&
+                ((validationReport && !validationReport.canProceed && !hasReimportAlert) ||
+                  isValidateError)
+            )
+            const step3Failed = Boolean(isError || (isSuccess && allFailedCompletely))
+            const isStepError =
+              (step.num === 1 && step1Failed && currentStep === 1) ||
+              (step.num === 3 && step3Failed && currentStep === 3)
+            const isDone =
+              !isStepError &&
+              (currentStep > step.num || (step.num === 3 && isSuccess && !allFailedCompletely))
+            const isActive = !isDone && currentStep === step.num
+            const isIdleClickable = currentStep === 0 && step.num === 1 && !isBusy
+            const isLast = idx === steps.length - 1
+            const barWidth = isDone
+              ? "100%"
+              : isStepError
+                ? "50%"
+                : isActive
+                  ? step.num === 2 && isPending
+                    ? `${Math.max(45, progressPercent)}%`
+                    : isValidating && step.num === 1
+                      ? "65%"
+                      : "45%"
+                  : "0%"
+
+            const statusLabel = isDone
+              ? "Selesai"
+              : isStepError
+                ? step.num === 1
+                  ? "Perlu Perbaikan"
+                  : "Gagal Diproses"
+                : isActive
+                  ? step.num === 1
+                    ? isValidating
+                      ? "Memeriksa berkas..."
+                      : "Berkas dipilih"
+                    : step.num === 2
+                      ? isPending
+                        ? "Menyimpan data..."
+                        : "Menunggu konfirmasi"
+                      : "Memproses hasil..."
+                  : isIdleClickable
+                    ? "Pilih berkas untuk mulai"
+                    : "Menunggu"
+
             return (
               <div
                 key={step.num}
-                className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                  isActive
-                    ? "border-red-300 bg-red-50/40"
-                    : isDone
-                      ? "border-emerald-200 bg-emerald-50/40"
-                      : "border-slate-200/80 bg-slate-50/50"
+                onClick={isIdleClickable ? () => fileInputRef.current?.click() : undefined}
+                onKeyDown={
+                  isIdleClickable
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault()
+                          fileInputRef.current?.click()
+                        }
+                      }
+                    : undefined
+                }
+                role={isIdleClickable ? "button" : undefined}
+                tabIndex={isIdleClickable ? 0 : undefined}
+                className={`${isLast ? "sm:shrink-0 sm:min-w-[180px]" : "flex-1"} ${
+                  isIdleClickable ? "cursor-pointer group focus:outline-none" : ""
                 }`}
               >
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-mono font-bold shrink-0 ${
-                    isDone
-                      ? "bg-emerald-600/85 text-white"
-                      : isActive
-                        ? "bg-slate-900 text-white"
-                        : "bg-slate-200 text-slate-600"
-                  }`}
-                >
-                  {isDone ? <Check className="w-4 h-4" /> : step.num}
+                <div className="flex items-center">
+                  {isDone ? (
+                    <div className="w-8 h-8 rounded-full bg-emerald-600/80 text-white flex items-center justify-center shrink-0 transition-all duration-300 scale-100">
+                      <Check className="w-4 h-4 stroke-[2.5]" />
+                    </div>
+                  ) : isStepError ? (
+                    <div className="w-8 h-8 rounded-full border-2 border-rose-400/80 bg-rose-50/70 text-rose-600/85 flex items-center justify-center shrink-0 transition-all duration-300">
+                      {step.num === 1 ? (
+                        <AlertTriangle className="w-4 h-4" />
+                      ) : (
+                        <XCircle className="w-4 h-4" />
+                      )}
+                    </div>
+                  ) : isActive ? (
+                    <div className="relative w-8 h-8 rounded-full border-2 border-slate-500 bg-white flex items-center justify-center shrink-0 transition-all duration-300 scale-105 shadow-xs">
+                      <span
+                        className="absolute inset-0 rounded-full bg-slate-400/25 animate-ping"
+                        style={{ animationDuration: "2.2s" }}
+                      />
+                      <span className="relative w-4 h-4 rounded-full bg-slate-500 transition-transform duration-300" />
+                    </div>
+                  ) : (
+                    <div
+                      className={`w-8 h-8 rounded-full bg-slate-200/80 border border-slate-200 text-slate-400 text-[11px] font-mono font-semibold flex items-center justify-center shrink-0 transition-all duration-300 ${
+                        isIdleClickable
+                          ? "group-hover:border-slate-400 group-hover:text-slate-600 group-hover:scale-105"
+                          : ""
+                      }`}
+                    >
+                      {step.num}
+                    </div>
+                  )}
+
+                  {!isLast && (
+                    <div className="hidden sm:block flex-1 mx-4 h-[3px] rounded-full bg-slate-200/80 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ease-out ${
+                          isDone
+                            ? "bg-emerald-500/70"
+                            : isStepError
+                              ? "bg-rose-400/70"
+                              : isActive
+                                ? `bg-slate-500/80 ${
+                                    (isValidating && step.num === 1) ||
+                                    (isPending && step.num === 2)
+                                      ? "animate-pulse"
+                                      : ""
+                                  }`
+                                : "bg-slate-400"
+                        }`}
+                        style={{ width: barWidth }}
+                      />
+                    </div>
+                  )}
                 </div>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-slate-900 truncate">{step.title}</div>
+
+                <div className="mt-3 space-y-0.5 text-left">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    STEP {step.num}
+                  </div>
+                  <div
+                    className={`text-sm font-bold transition-colors duration-300 ${
+                      currentStep === 0 && !isIdleClickable
+                        ? "text-slate-500"
+                        : "text-slate-800"
+                    }`}
+                  >
+                    {step.title}
+                  </div>
+                  <div
+                    className={`text-[11px] font-semibold pt-0.5 transition-colors duration-300 ${
+                      isDone
+                        ? "text-emerald-700/85"
+                        : isStepError
+                          ? "text-rose-600/85"
+                          : isActive
+                            ? "text-slate-600"
+                            : isIdleClickable
+                              ? "text-slate-400 group-hover:text-slate-600"
+                              : "text-slate-400"
+                    }`}
+                  >
+                    {statusLabel}
+                  </div>
                 </div>
               </div>
             )
