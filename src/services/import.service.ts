@@ -416,6 +416,139 @@ const parseDemographyPeriodKey = (
   return `${finalYear}-${String(finalMonth).padStart(2, "0")}`
 }
 
+const CELL_KEY_REGEX = /^([A-Z]+)(\d+)$/
+
+const decodeColIndexClient = (colLetters: string): number => {
+  let idx = 0
+  for (let i = 0; i < colLetters.length; i++) {
+    idx = idx * 26 + (colLetters.charCodeAt(i) - 64)
+  }
+  return idx - 1
+}
+
+const isMeaningfulCellClient = (cell: XLSX.CellObject | undefined): boolean => {
+  if (!cell || cell.t === "z") return false
+  if (cell.t === "e") return true
+  const val = cell.v !== undefined ? cell.v : cell.w
+  if (val === undefined || val === null) return false
+  if (typeof val === "number") return !Number.isNaN(val)
+  if (typeof val === "string") return val.replace(/\u00A0/g, " ").trim() !== ""
+  return true
+}
+
+const trimWorksheetRangeClient = (sheet: XLSX.WorkSheet | undefined): void => {
+  if (!sheet || (sheet as any)._trimmed) return
+  const rowCellKeys = new Map<number, string[]>()
+  const colCellKeys = new Map<number, string[]>()
+
+  for (const key of Object.keys(sheet)) {
+    if (key.startsWith("!")) continue
+    const match = CELL_KEY_REGEX.exec(key)
+    if (!match) continue
+    if (!isMeaningfulCellClient(sheet[key] as XLSX.CellObject)) {
+      delete sheet[key]
+      continue
+    }
+    const colIdx = decodeColIndexClient(match[1])
+    const rowIdx = parseInt(match[2], 10) - 1
+    if (!rowCellKeys.has(rowIdx)) rowCellKeys.set(rowIdx, [])
+    rowCellKeys.get(rowIdx)!.push(key)
+    if (!colCellKeys.has(colIdx)) colCellKeys.set(colIdx, [])
+    colCellKeys.get(colIdx)!.push(key)
+  }
+
+  if (rowCellKeys.size === 0) {
+    delete sheet["!ref"]
+    Object.defineProperty(sheet, "_trimmed", { value: true, configurable: true })
+    return
+  }
+
+  const sortedRows = Array.from(rowCellKeys.keys()).sort((a, b) => a - b)
+  let maxRow = sortedRows[sortedRows.length - 1]
+  for (let i = 1; i < sortedRows.length; i++) {
+    if (sortedRows[i] - sortedRows[i - 1] > 1000) {
+      const trailingRows = sortedRows.slice(i)
+      if (
+        trailingRows.length <= 5 &&
+        trailingRows.every((r) => (rowCellKeys.get(r)?.length || 0) <= 3)
+      ) {
+        for (const r of trailingRows) {
+          for (const k of rowCellKeys.get(r) || []) delete sheet[k]
+          rowCellKeys.delete(r)
+        }
+        maxRow = sortedRows[i - 1]
+      }
+      break
+    }
+  }
+
+  const activeColKeys = new Map<number, string[]>()
+  for (const [cIdx, keys] of colCellKeys.entries()) {
+    const remaining = keys.filter((k) => Object.prototype.hasOwnProperty.call(sheet, k))
+    if (remaining.length > 0) activeColKeys.set(cIdx, remaining)
+  }
+  const sortedCols = Array.from(activeColKeys.keys()).sort((a, b) => a - b)
+  if (sortedCols.length === 0) {
+    delete sheet["!ref"]
+    Object.defineProperty(sheet, "_trimmed", { value: true, configurable: true })
+    return
+  }
+  let maxCol = sortedCols[sortedCols.length - 1]
+  for (let i = 1; i < sortedCols.length; i++) {
+    if (sortedCols[i] - sortedCols[i - 1] > 50) {
+      const trailingCols = sortedCols.slice(i)
+      if (
+        trailingCols.length <= 3 &&
+        trailingCols.every((c) => (activeColKeys.get(c)?.length || 0) <= 3)
+      ) {
+        for (const c of trailingCols) {
+          for (const k of activeColKeys.get(c) || []) delete sheet[k]
+          activeColKeys.delete(c)
+        }
+        maxCol = sortedCols[i - 1]
+      }
+      break
+    }
+  }
+
+  let origStartRow = 0
+  let origStartCol = 0
+  if (sheet["!ref"]) {
+    try {
+      const decoded = XLSX.utils.decode_range(sheet["!ref"])
+      origStartRow = decoded.s.r
+      origStartCol = decoded.s.c
+    } catch {
+      origStartRow = 0
+      origStartCol = 0
+    }
+  }
+  sheet["!ref"] = XLSX.utils.encode_range({
+    s: { r: Math.min(origStartRow, sortedRows[0]), c: Math.min(origStartCol, sortedCols[0]) },
+    e: { r: maxRow, c: maxCol },
+  })
+  Object.defineProperty(sheet, "_trimmed", { value: true, configurable: true })
+}
+
+const peekSheetRowsClient = (
+  sheet: XLSX.WorkSheet | undefined,
+  maxRows: number = 10,
+  maxCols: number = 50
+): any[][] => {
+  if (!sheet || !sheet["!ref"]) return []
+  const orig = XLSX.utils.decode_range(sheet["!ref"])
+  return XLSX.utils.sheet_to_json<any[]>(sheet, {
+    header: 1,
+    range: {
+      s: orig.s,
+      e: {
+        r: Math.min(orig.e.r, orig.s.r + Math.max(0, maxRows - 1)),
+        c: Math.min(orig.e.c, orig.s.c + Math.max(0, maxCols - 1)),
+      },
+    },
+  })
+}
+
 /**
  * Inspeksi client-side untuk mendeteksi 1 NIK yang muncul di >1 toko dalam bulan yang sama (kasus mutasi).
  * Mengikuti aturan backend: baris paling bawah di Excel menjadi toko aktif akhir pada bulan tersebut.
@@ -425,8 +558,17 @@ export async function inspectDemographyMutations(
 ): Promise<DemographyMutationSummary | null> {
   try {
     const buffer = await file.arrayBuffer()
-    const workbook = XLSX.read(buffer, { type: "array" })
+    const workbook = XLSX.read(buffer, {
+      type: "array",
+      cellHTML: false,
+      cellFormula: false,
+      cellStyles: false,
+      sheetRows: 50000,
+    })
     if (!workbook.SheetNames || workbook.SheetNames.length === 0) return null
+    for (const name of workbook.SheetNames) {
+      trimWorksheetRangeClient(workbook.Sheets[name])
+    }
 
     let targetSheets = workbook.SheetNames.filter((name) => {
       const l = name.toLowerCase()
@@ -443,7 +585,7 @@ export async function inspectDemographyMutations(
         ) {
           return false
         }
-        const preview = XLSX.utils.sheet_to_json<any[]>(workbook.Sheets[name], { header: 1 }).slice(0, 6)
+        const preview = peekSheetRowsClient(workbook.Sheets[name], 6)
         const flat = preview.flat().map(normHeaderKey).join(" ")
         return flat.includes("employeeno") || flat.includes("namakaryawan") || flat.includes("nik")
       })
@@ -467,6 +609,8 @@ export async function inspectDemographyMutations(
 
     for (const sheetName of targetSheets) {
       const sheet = workbook.Sheets[sheetName]
+      trimWorksheetRangeClient(sheet)
+      if (!sheet || !sheet["!ref"]) continue
       const matrix = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1 })
       if (matrix.length === 0) continue
 
@@ -491,7 +635,10 @@ export async function inspectDemographyMutations(
 
       const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { range: headerRowIdx })
       rows.forEach((row, idx) => {
-        const rowNum = headerRowIdx + 2 + idx
+        const rowNum =
+          typeof (row as any).__rowNum__ === "number"
+            ? (row as any).__rowNum__ + 1
+            : headerRowIdx + 2 + idx
         const rawEmpNo = getRowValByAliases(row, "employeeno", "nik", "idkaryawan")
         const rawName = getRowValByAliases(row, "namakaryawan", "nama", "name")
         const empNoClean = String(rawEmpNo ?? "")
